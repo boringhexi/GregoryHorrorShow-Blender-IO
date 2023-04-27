@@ -7,7 +7,7 @@ bl_info = {
     "author": "boringhexi",
     "version": (0, 1, 0),
     "blender": (3, 5, 0),
-    "location": "File > Import-Export",
+    "location": "File > Import",
     "description": "For .pm2 files from Gregory Horror Show (PS2)",
     "warning": "",
     "doc_url": "",
