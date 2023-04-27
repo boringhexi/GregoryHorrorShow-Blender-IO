@@ -15,7 +15,7 @@ def load_pm2(
         filepath = os.path.join(dirname, file.name)
         with open(filepath, "rb") as fp:
             pm2model = Pm2Model.from_file(fp)
-            pm2importer = Pm2Importer(pm2model)
+            pm2importer = Pm2Importer(pm2model, bl_name=file.name)
             pm2importer.import_scene()
         del pm2model, pm2importer
     context.view_layer.update()

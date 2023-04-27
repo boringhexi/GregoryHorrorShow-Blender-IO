@@ -1,3 +1,5 @@
+import os
+
 import bpy
 from bpy_extras.io_utils import unpack_list
 
@@ -13,7 +15,8 @@ class Pm2Importer:
         """
         self._pm2model = pm2model
         self._bpycollection = bpy.context.collection
-        self.bl_name = bl_name  # TODO get bl_name from filename base
+        self.bl_name = bl_name
+        self._bl_basename = os.path.splitext(bl_name)[0]
         self.bl_meshobj = None
 
     def import_scene(self):
@@ -83,7 +86,8 @@ class Pm2Importer:
                 # map tex_offset to index of the soon-to-be-created new material
                 tex_offset_to_material_index[tex_offset] = mat_index
                 # create a new material
-                mat = bpy.data.materials.new(name=f"{self.bl_name}_{hex(tex_offset)}")
+                matname = f"{self._bl_basename}_{tex_offset:#05x}"
+                mat = bpy.data.materials.new(name=matname)
                 me.materials.append(mat)
                 mat_index += 1
                 encountered_tex_offsets.add(tex_offset)
