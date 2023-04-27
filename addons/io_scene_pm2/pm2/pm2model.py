@@ -45,7 +45,7 @@ class Prim:
     x.texcoords: a list of texture coordinates
     """
 
-    _ADJ_POSITION = 16
+    _ADJ_POSITION = 64
     _ADJ_NORMAL = 4096
     _ADJ_RGB = 256
     _ADJ_ALPHA = 128
