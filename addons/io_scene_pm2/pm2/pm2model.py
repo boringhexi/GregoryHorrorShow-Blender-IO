@@ -11,10 +11,12 @@ from typing import BinaryIO, Optional, Sequence, Union, Tuple, List
 
 PM2TYPES = {
     "FLOAT32": 0x12,
+    "FLOAT32_ANIM": 0x13,
     "SINT32": 0x32,  # sint16s in the pm2 file that become sint32s in VU memory
     "SINT32_ANIM": 0x33,
 }
 PM2TYPES_ANIM = {
+    "FLOAT32_ANIM": 0x13,
     "SINT32_ANIM": 0x33,
 }
 VIFCOMMANDS = {
@@ -189,7 +191,7 @@ class Pm2Model:
             primlist = PrimList(texture_offset=texture_offset)
             if pm2type in (PM2TYPES["SINT32"], PM2TYPES["SINT32_ANIM"]):
                 datatype = "sint32"
-            else:  # "FLOAT32"
+            else:  # "FLOAT32" / "FLOAT32_ANIM"
                 datatype = "float32"
             is_last_prim = False
             while not is_last_prim:
