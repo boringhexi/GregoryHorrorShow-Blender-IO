@@ -93,16 +93,14 @@ class AnimatedPrim(Prim):
     """
     The same as Prim, with the addition of:
 
-    - x.positions2: a list of delta values to add to x.positions to get the next frame
-      (TODO are they deltas?)
-    - x.normals2: a list of delta values to add to x.normals to get the next frame
-      (TODO are they deltas?)
+    - x.position_animdeltas: add these to x.positions to get the next frame
+    - x.normal_animdeltas: add these to x.normals to get the next frame
     """
 
     def __init__(self, adjust_all_values: bool = False):
         super().__init__(adjust_all_values=adjust_all_values)
-        self.positions2: List[Tuple[float, float, float]] = []
-        self.normals2: List[Tuple[float, float, float]] = []
+        self.position_animdeltas: List[Tuple[float, float, float]] = []
+        self.normal_animdeltas: List[Tuple[float, float, float]] = []
 
     def add_vertex(
         self,
@@ -110,15 +108,17 @@ class AnimatedPrim(Prim):
         normal: Tuple[float, float, float],
         color: Tuple[float, float, float, float],
         texcoord: Tuple[float, float],
-        position2: Optional[Tuple[float, float, float]] = None,
-        normal2: Optional[Tuple[float, float, float]] = None,
+        position_animdelta: Optional[Tuple[float, float, float]] = None,
+        normal_animdelta: Optional[Tuple[float, float, float]] = None,
     ):
         super().add_vertex(position, normal, color, texcoord)
         if self._adjust_all_values:
-            position2 = tuple(p / self._ADJ_POSITION for p in position2)
-            normal2 = tuple(n / self._ADJ_NORMAL for n in normal2)
-        self.positions2.append(position2)
-        self.normals2.append(normal2)
+            position_animdelta = tuple(
+                p / self._ADJ_POSITION for p in position_animdelta
+            )
+            normal_animdelta = tuple(n / self._ADJ_NORMAL for n in normal_animdelta)
+        self.position_animdeltas.append(position_animdelta)
+        self.normal_animdeltas.append(normal_animdelta)
 
 
 class PrimList(list[Prim]):
@@ -368,8 +368,8 @@ def _read_prim(file: BinaryIO, numverts, datatype, animated=False):
                 (normx, normy, normz),
                 (r, g, b, a),
                 (s, t),
-                position2=(posx2, posy2, posz2),
-                normal2=(normx2, normy2, normz2),
+                position_animdelta=(posx2, posy2, posz2),
+                normal_animdelta=(normx2, normy2, normz2),
             )
         else:
             vals = read_vals(file, num=16)
