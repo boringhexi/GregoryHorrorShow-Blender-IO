@@ -5,9 +5,19 @@ pm2model.py
 Parse the contents of a Gregory Horror Show .pm2 model file.
 """
 from io import BytesIO
-from struct import pack, unpack
+from struct import unpack
 from sys import argv
-from typing import BinaryIO, Optional, Sequence, Union, Tuple, List
+from typing import BinaryIO, List, Optional, Sequence, Tuple
+
+from ..common import (
+    read_float32,
+    read_sint16,
+    read_sint32,
+    read_uint32,
+    read_unless_eof,
+    write_sint32,
+    write_uint32,
+)
 
 PM2TYPES = {
     "FLOAT32": 0x12,
@@ -47,7 +57,7 @@ class Prim:
     x.texcoords: a list of texture coordinates
     """
 
-    _ADJ_POSITION = 64
+    _ADJ_POSITION = 1024
     _ADJ_NORMAL = 4096
     _ADJ_RGB = 256
     _ADJ_ALPHA = 128
@@ -148,7 +158,7 @@ class Pm2Model:
     @classmethod
     def from_file(cls, file: BinaryIO):
         """Initialize a Pm2Model instance from a file"""
-        header_bytes = _read_unless_eof(file, 0x10)
+        header_bytes = read_unless_eof(file, 0x10)
         (
             magic,
             pm2type,
@@ -177,11 +187,11 @@ class Pm2Model:
                 ):
                     continue
                 elif command == VIFCOMMANDS["UNPACK_V4_32"]:
-                    uint32s = _read_uint32(file, num=num * 4)
-                    _write_uint32(vu_memory, *uint32s)
+                    uint32s = read_uint32(file, num=num * 4)
+                    write_uint32(vu_memory, *uint32s)
                 elif command == VIFCOMMANDS["UNPACK_V4_16"]:
-                    sint16s = _read_sint16(file, num=num * 4)
-                    _write_sint32(vu_memory, *sint16s)
+                    sint16s = read_sint16(file, num=num * 4)
+                    write_sint32(vu_memory, *sint16s)
                 else:
                     raise ValueError(f"Unknown VIF command {hex(command)}")
 
@@ -203,116 +213,13 @@ class Pm2Model:
         return cls(primlists, animated=animated)
 
 
-def _read_unless_eof(file: BinaryIO, num: int) -> bytes:
-    """read and return num bytes from file, unless end of file is encountered first
-
-    :param num: number of bytes to attempt to read
-    :raises: EOFError if end of file is encountered before end of reading
-    :return: num bytes from file
-    """
-    readbytes = file.read(num)
-    if len(readbytes) < num:
-        raise EOFError("Unexpected end of file")
-    return readbytes
-
-
-def _read_sint16(
-    file: BinaryIO, num: Optional[int] = None
-) -> Union[int, tuple[int, ...]]:
-    """read and return a signed 16-bit integer (little-endian) from file
-
-    :param num: if specified, read this many integers and return as a tuple
-    :raises: EOFError if end of file is encountered before end of reading
-    :return: an int or a tuple of ints
-    """
-    if num is None:
-        return unpack("<h", _read_unless_eof(file, 2))[0]
-    else:
-        fmt = f"<{num:d}h"
-        return unpack(fmt, _read_unless_eof(file, 2 * num))
-
-
-def _read_uint32(
-    file: BinaryIO, num: Optional[int] = None
-) -> Union[int, tuple[int, ...]]:
-    """read and return an unsigned 32-bit integer (little-endian) from file
-
-    :param num: if specified, read this many uin32s and return as a tuple
-    :raises: EOFError if end of file is encountered before end of reading
-    :return: a uint32 or a tuple of uint32s
-    """
-    if num is None:
-        return unpack("<I", _read_unless_eof(file, 4))[0]
-    else:
-        fmt = f"<{num:d}I"
-        return unpack(fmt, _read_unless_eof(file, 4 * num))
-
-
-def _read_sint32(
-    file: BinaryIO, num: Optional[int] = None
-) -> Union[int, tuple[int, ...]]:
-    """read and return a signed 32-bit integer (little-endian) from file
-
-    :param num: if specified, read this many sin32s and return as a tuple
-    :raises: EOFError if end of file is encountered before end of reading
-    :return: a sint32 or a tuple of sint32s
-    """
-    if num is None:
-        return unpack("<i", _read_unless_eof(file, 4))[0]
-    else:
-        fmt = f"<{num:d}i"
-        return unpack(fmt, _read_unless_eof(file, 4 * num))
-
-
-def _read_float32(
-    file: BinaryIO, num: Optional[int] = None
-) -> Union[float, tuple[float, ...]]:
-    """read and return a 32-bit float (little-endian) from file
-
-    :param num: if specified, read this many floats and return as a tuple
-    :raises: EOFError if end of file is encountered before end of reading
-    :return: a float or a tuple of floats
-    """
-    if num is None:
-        return unpack("<f", _read_unless_eof(file, 4))[0]
-    else:
-        fmt = f"<{num:d}f"
-        return unpack(fmt, _read_unless_eof(file, 4 * num))
-
-
 def _read_vif_command(file: BinaryIO) -> Tuple[int, int, int]:
     """read and return a VIF command from file
 
     :return: tuple of (command, num, immediate)
     """
-    immediate, num, command = unpack("<HBB", _read_unless_eof(file, 4))
+    immediate, num, command = unpack("<HBB", read_unless_eof(file, 4))
     return command, num, immediate
-
-
-def _write_sint32(file: BinaryIO, *ints: int) -> int:
-    """write ints to file as signed 32-bit integers (little-endian)
-
-    :param ints: signed int or ints to write to file
-    :return: number of bytes written to file
-    """
-    size = len(ints)
-    fmt = f"<{size:d}i"
-    ints_as_bytes = pack(fmt, *ints)
-    file.write(ints_as_bytes)
-    return len(ints_as_bytes)
-
-
-def _write_uint32(file: BinaryIO, *ints: int) -> int:
-    """write ints to file as unsigned 32-bit integers (little-endian)
-
-    :param ints: unsigned int or ints to write to file
-    :return: number of bytes written to file
-    """
-    size = len(ints)
-    fmt = f"<{size:d}I"
-    ints_as_bytes = pack(fmt, *ints)
-    file.write(ints_as_bytes)
-    return len(ints_as_bytes)
 
 
 def _read_primlist_header(file: BinaryIO):
@@ -320,7 +227,7 @@ def _read_primlist_header(file: BinaryIO):
 
     :return: tuple (texture_offset,)
     """
-    return unpack("4x4x4x4x1H2x4x4x4x", _read_unless_eof(file, 0x20))
+    return unpack("4x4x4x4x1H2x4x4x4x", read_unless_eof(file, 0x20))
 
 
 def _read_prim_header(file: BinaryIO):
@@ -328,7 +235,7 @@ def _read_prim_header(file: BinaryIO):
 
     :return: tuple (numverts, is_last_prim)
     """
-    numverts_and_flag = unpack("1I4x4x4x", _read_unless_eof(file, 0x10))[0]
+    numverts_and_flag = unpack("1I4x4x4x", read_unless_eof(file, 0x10))[0]
     numverts = numverts_and_flag & 0x7FFF
     is_last_prim = numverts_and_flag & 0x8000
     return numverts, is_last_prim
@@ -343,10 +250,10 @@ def _read_prim(file: BinaryIO, numverts, datatype, animated=False):
     :return: Prim or AnimatedPrim instance
     """
     if datatype == "sint32":
-        read_vals = _read_sint32
+        read_vals = read_sint32
         adjust_all_values = True
     elif datatype == "float32":
-        read_vals = _read_float32
+        read_vals = read_float32
         adjust_all_values = False
     else:
         raise ValueError(f"Was provided invalid datatype {datatype!r}")

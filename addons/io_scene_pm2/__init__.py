@@ -1,14 +1,14 @@
 import bpy
-from bpy.props import StringProperty, CollectionProperty
+from bpy.props import CollectionProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
-    "name": "Gregory Horror Show PM2 format",
+    "name": "Gregory Horror Show GHS/PM2 format",
     "author": "boringhexi",
     "version": (0, 1, 2),
     "blender": (3, 5, 0),
     "location": "File > Import",
-    "description": "For .pm2 files from Gregory Horror Show (PS2)",
+    "description": "For .ghs and .pm2 files from Gregory Horror Show (PS2)",
     "warning": "",
     "doc_url": "",
     "category": "Import-Export",
@@ -24,38 +24,40 @@ if "_this_file_was_already_loaded" in locals():
 
     # Order matters. Reload module B before reloading module A that imports module B
     modules_to_reload = (
-        ".pm2.pm2model",
+        ".common" ".pm2.pm2model",
         ".pm2.pm2importer",
-        ".import_pm2",
+        ".ghs.meshposrot",
+        ".ghs.ghsimporter",
+        ".ghs.findimportdirs",
+        ".import_ghs_pm2",
     )
     reload_modules(*modules_to_reload, pkg=__package__)
 _this_file_was_already_loaded = True  # to detect the reload next time
 # After this point, any imports of the modules above will be up-to-date.
 
 
-class ImportPM2(bpy.types.Operator, ImportHelper):
-    """Import a PM2 file"""
+class ImportGHSPM2(bpy.types.Operator, ImportHelper):
+    """Import GHS and/or PM2 files"""
 
-    bl_idname = "import_scene.pm2"
-    bl_label = "Import PM2"
+    bl_idname = "import_scene.ghspm2"
+    bl_label = "Import GHS/PM2"
     bl_options = {"REGISTER", "UNDO"}
-    filename_ext = ".pm2"
 
-    filter_glob: StringProperty(default="*.pm2", options={"HIDDEN"})
+    filter_glob: StringProperty(default="*.ghs;*.pm2", options={"HIDDEN"})
     files: CollectionProperty(type=bpy.types.PropertyGroup)
 
     def execute(self, context):
         # to reduce Blender startup time, delay import until now
-        from . import import_pm2
+        from . import import_ghs_pm2
 
         keywords = self.as_keywords(ignore=("filter_glob",))
-        return import_pm2.load(context, **keywords)
+        return import_ghs_pm2.load(context, **keywords)
 
     def draw(self, context):
         pass
 
 
-class PM2_PT_import_options(bpy.types.Panel):
+class GHSPM2_PT_import_options(bpy.types.Panel):
     bl_space_type = "FILE_BROWSER"
     bl_region_type = "TOOL_PROPS"
     bl_label = "Options"
@@ -78,12 +80,12 @@ class PM2_PT_import_options(bpy.types.Panel):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportPM2.bl_idname, text="Gregory Horror Show (.pm2)")
+    self.layout.operator(ImportGHSPM2.bl_idname, text="Gregory Horror Show (.ghs/.pm2)")
 
 
 classes = (
-    ImportPM2,
-    PM2_PT_import_options,
+    ImportGHSPM2,
+    GHSPM2_PT_import_options,
 )
 
 
