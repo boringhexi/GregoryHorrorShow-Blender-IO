@@ -193,6 +193,7 @@ class GhsImporter:
         animidx_to_scalehide_bones = defaultdict(list)
         boneidx_to_scalehide_bones = defaultdict(list)
         deleteme_bonenames = []
+        made_copies = False
 
         for animidx, (anim, mpr) in enumerate(zip(anims, mprs)):
             is_last_animation = animidx + 1 == len(anims)
@@ -241,6 +242,8 @@ class GhsImporter:
                     default_scalehide_bonename_to_pm2mesh[
                         scalehide_bonename
                     ] = pm2meshobj.data
+
+                made_copies = True
 
             if self.anim_method == "DRIVER":
                 if armobj.animation_data is not None:
@@ -650,7 +653,7 @@ class GhsImporter:
             delete_deleteme_bones(deleteme_bonenames, armobj.data)
 
         bpy.ops.object.mode_set(mode="OBJECT")
-        if self.anim_method == "SEPARATE_ARMATURES":
+        if self.anim_method == "SEPARATE_ARMATURES" and made_copies:
             # delete the original armature, we made copies of it but aren't using it
             bpy.data.armatures.remove(original_armdata)
             # same with the original default body part meshes
