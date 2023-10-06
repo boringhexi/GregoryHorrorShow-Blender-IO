@@ -578,7 +578,7 @@ class GhsImporter:
                 bpyaction: Action = armobj.animation_data.action
                 set_action_interpolation(bpyaction)
                 simplify_scalehide_fcurves(bpyaction)
-                set_default_scalehide_bones_visibility(
+                self.set_default_scalehide_bones_visibility(
                     boneidx_to_default_scalehide_bonename,
                     boneidx_to_scalehide_bones,
                     bpyaction,
@@ -622,7 +622,7 @@ class GhsImporter:
                     # and other fcurve set/cleanup
                     set_action_interpolation(bpyaction)
                     simplify_scalehide_fcurves(bpyaction)
-                    set_default_scalehide_bones_visibility(
+                    self.set_default_scalehide_bones_visibility(
                         boneidx_to_default_scalehide_bonename,
                         boneidx_to_scalehide_bones,
                         bpyaction,
@@ -641,7 +641,7 @@ class GhsImporter:
                 bpyaction = original_armobj.animation_data.action
                 set_action_interpolation(bpyaction)
                 simplify_scalehide_fcurves(bpyaction)
-                set_default_scalehide_bones_visibility(
+                self.set_default_scalehide_bones_visibility(
                     boneidx_to_default_scalehide_bonename,
                     boneidx_to_scalehide_bones,
                     bpyaction,
@@ -660,77 +660,84 @@ class GhsImporter:
             for default_pm2mesh in original_default_pm2mesh_to_scalehide_bonename:
                 bpy.data.meshes.remove(default_pm2mesh)
 
+    def set_default_scalehide_bones_visibility(
+        self,
+        boneidx_to_default_scalehide_bonename,
+        boneidx_to_scalehide_bones,
+        bpyaction: Action,
+    ):
+        # calc and set frame-by-frame visibility of each default pm2's scalehide bone
+        bpy.ops.object.mode_set(mode="POSE")
+        for (
+            boneidx,
+            default_scalehide_bonename,
+        ) in boneidx_to_default_scalehide_bonename.items():
+            overwriting_scalehide_bonenames = boneidx_to_scalehide_bones.get(boneidx)
+            if overwriting_scalehide_bonenames is None:
+                continue
 
-def set_default_scalehide_bones_visibility(
-    boneidx_to_default_scalehide_bonename, boneidx_to_scalehide_bones, bpyaction: Action
-):
-    # calc and set frame-by-frame visibility of each default pm2's scalehide bone
-    bpy.ops.object.mode_set(mode="POSE")
-    for (
-        boneidx,
-        default_scalehide_bonename,
-    ) in boneidx_to_default_scalehide_bonename.items():
-        overwriting_scalehide_bonenames = boneidx_to_scalehide_bones.get(boneidx)
-        if overwriting_scalehide_bonenames is None:
-            continue
+            # get the fcurves we'll need
+            default_fcurves = [None, None, None]
+            overwriting_fcurves_x = []
+            for fcurve in bpyaction.fcurves:
+                poseandbonename, curvetype = fcurve.data_path.rsplit(".", maxsplit=1)
+                bonename = poseandbonename.split('"')[1]
+                if curvetype == "scale":
+                    if bonename == default_scalehide_bonename:
+                        # there are 3 fcurves, x y and z scale
+                        default_fcurves[fcurve.array_index] = fcurve
+                    elif (
+                        bonename in overwriting_scalehide_bonenames
+                        and fcurve.array_index == 0
+                    ):
+                        overwriting_fcurves_x.append(fcurve)
 
-        # get the fcurves we'll need
-        default_fcurves = [None, None, None]
-        overwriting_fcurves_x = []
-        for fcurve in bpyaction.fcurves:
-            poseandbonename, curvetype = fcurve.data_path.rsplit(".", maxsplit=1)
-            bonename = poseandbonename.split('"')[1]
-            if curvetype == "scale":
-                if bonename == default_scalehide_bonename:
-                    # there are 3 fcurves, x y and z scale
-                    default_fcurves[fcurve.array_index] = fcurve
-                elif (
-                    bonename in overwriting_scalehide_bonenames
-                    and fcurve.array_index == 0
-                ):
-                    overwriting_fcurves_x.append(fcurve)
+            # create default scalehide fcurves if they don't already exist
+            for axis, default_fcurve in enumerate(default_fcurves):
+                if default_fcurve is None:
+                    data_path = f'pose.bones["{default_scalehide_bonename}"].scale'
+                    default_fcurve = bpyaction.fcurves.new(data_path, index=axis)
+                    default_fcurves[axis] = default_fcurve
 
-        # create default scalehide fcurves if they don't already exist
-        for axis, default_fcurve in enumerate(default_fcurves):
-            if default_fcurve is None:
-                data_path = f'pose.bones["{default_scalehide_bonename}"].scale'
-                default_fcurve = bpyaction.fcurves.new(data_path, index=axis)
-                default_fcurves[axis] = default_fcurve
+            self.calc_default_scalehide_fcurves(default_fcurves, overwriting_fcurves_x)
 
-        calc_default_scalehide_fcurves(default_fcurves, overwriting_fcurves_x)
+    def calc_default_scalehide_fcurves(
+        self,
+        default_fcurves: tuple[FCurve, FCurve, FCurve],
+        overwriting_fcurves: list[FCurve],
+    ) -> None:
+        """modify default_fcurves to display correctly around overwriting_fcurves
 
+        In plain speak, this makes the default body part meshes display only when needed
+        (instead of being displayed all the time)
 
-def calc_default_scalehide_fcurves(
-    default_fcurves: tuple[FCurve, FCurve, FCurve], overwriting_fcurves: list[FCurve]
-) -> None:
-    """modify default_fcurves to display correctly around overwriting_fcurves
+        Prerequisite: all fcurves must be already in CONSTANT interpolation, with all
+        keyframe values being either 0 or 1.
 
-    In plain speak, this makes the default body part meshes display only when needed
-    (instead of being displayed all the time)
+        :param default_fcurves: list [x,y,z] of scale fcurves of the default scalehide bone.
+            These fcurves will be modified in-place
+        :param overwriting_fcurves: list of scalehide fcurves of the overwriting pm2s
+        """
 
-    Prerequisite: all fcurves must be already in CONSTANT interpolation, with all
-    keyframe values being either 0 or 1.
-
-    :param default_fcurves: list [x,y,z] of scale fcurves of the default scalehide bone.
-        These fcurves will be modified in-place
-    :param overwriting_fcurves: list of scalehide fcurves of the overwriting pm2s
-    """
-
-    default_mypoints = fcurve_to_mypoints(default_fcurves[0])
-    if default_mypoints and default_mypoints[0][0] != 0:
-        # fixes a bug in 1LONG mode where when the same pm2mesh is both a default and
-        # overwriting pm2mesh, it would not be properly hidden until later in the
-        # timeline.
-        default_mypoints = [(0, 0)] + default_mypoints
-    overwriting_mypoints = [fcurve_to_mypoints(fc) for fc in overwriting_fcurves]
-    overwriting_sum = sum_scalehide_mypoints(overwriting_mypoints)
-    inverted_overwriting_sum = invert_scalehide_mypoints(overwriting_sum)
-    new_default_mypoints = sum_scalehide_mypoints(
-        [default_mypoints, inverted_overwriting_sum]
-    )
-    new_default_mypoints = simplify_scalehide_mypoints(new_default_mypoints)
-    for default_fcurve in default_fcurves:
-        mypoints_into_fcurve(new_default_mypoints, default_fcurve)
+        default_mypoints = fcurve_to_mypoints(default_fcurves[0])
+        if (
+            self.anim_method in ("1LONG", "1LONG_EVERY100")
+            and default_mypoints
+            and default_mypoints[0][0] != 0
+        ):
+            # fixes a bug in 1LONG mode where when the same pm2mesh is both a default
+            # and overwriting pm2mesh, it would not be properly hidden until later in
+            # the timeline.
+            default_mypoints = [(0, 0)] + default_mypoints
+        overwriting_mypoints = [fcurve_to_mypoints(fc) for fc in overwriting_fcurves]
+        overwriting_sum = sum_scalehide_mypoints(overwriting_mypoints)
+        inverted_overwriting_sum = invert_scalehide_mypoints(overwriting_sum)
+        new_default_mypoints = sum_scalehide_mypoints(
+            [default_mypoints, inverted_overwriting_sum]
+        )
+        new_default_mypoints = simplify_scalehide_mypoints(new_default_mypoints)
+        for default_fcurve in default_fcurves:
+            mypoints_into_fcurve(new_default_mypoints, default_fcurve)
 
 
 def fcurve_to_mypoints(fcurve: FCurve) -> list[tuple[int, float]]:
