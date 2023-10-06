@@ -51,6 +51,8 @@ def set_action_1frame_interpolation(
 
 
 def has_scale_keyframe_at_frame(armobj, scalehide_bonename, frame):
+    if armobj.animation_data is None:
+        return False
     bpyaction = armobj.animation_data.action
     for fcurve in bpyaction.fcurves:
         poseandbonename, curvetype = fcurve.data_path.rsplit(".", maxsplit=1)
@@ -270,7 +272,7 @@ class GhsImporter:
                     bpyposebone.keyframe_insert(
                         "rotation_euler", frame=frame_offset + frame
                     )
-                    if frame == 0:
+                    if frame == 0 and armobj.animation_data is not None:
                         # set this and future keyframes to LINEAR interpolation
                         bpyaction: Action = armobj.animation_data.action
                         set_action_1frame_interpolation(
@@ -280,8 +282,11 @@ class GhsImporter:
                             "LINEAR",
                             posebone=bpyposebone.name,
                         )
-            bpyaction: Action = armobj.animation_data.action
-            if self.anim_method in ("1LONG", "1LONG_EVERY100"):
+            if (
+                self.anim_method in ("1LONG", "1LONG_EVERY100")
+                and armobj.animation_data is not None
+            ):
+                bpyaction: Action = armobj.animation_data.action
                 # prevent interpolation between consecutive animations by setting all
                 # final keyframes in this mpr to CONSTANT
                 # Note: a constant keyframe causes all future keyframes in the curve to
@@ -295,7 +300,8 @@ class GhsImporter:
             shapekeys_already_keyframed = set()
             shapekeyactions = set()
 
-            if self.anim_method == "DRIVER":
+            if self.anim_method == "DRIVER" and armobj.animation_data is not None:
+                bpyaction: Action = armobj.animation_data.action
                 anim_name = str(animidx)
                 anim_len = anim["anim_len"]
                 bpyaction.frame_end = anim_len
@@ -560,9 +566,13 @@ class GhsImporter:
             if self.anim_method in ("1LONG", "1LONG_EVERY100", "SEPARATE_ARMATURES"):
                 for skaction in shapekeyactions:
                     set_action_interpolation(skaction)
-            if self.anim_method == "SEPARATE_ARMATURES":
+            if (
+                self.anim_method == "SEPARATE_ARMATURES"
+                and armobj.animation_data is not None
+            ):
                 # set frame-by-frame visibility of each default pm2's scalehide bone
                 # and other fcurve set/cleanup
+                bpyaction: Action = armobj.animation_data.action
                 set_action_interpolation(bpyaction)
                 simplify_scalehide_fcurves(bpyaction)
                 set_default_scalehide_bones_visibility(
@@ -580,36 +590,42 @@ class GhsImporter:
             # scale to 0 all scalehide bones not in the current animation
             bpy.ops.object.mode_set(mode="POSE")
             all_actions = []
-            for animidx, bpy_nla_track in enumerate(armobj.animation_data.nla_tracks):
-                bpy_nla_strip = bpy_nla_track.strips[0]
-                bpyaction = bpy_nla_strip.action
-                armobj.animation_data.action = bpyaction
-                all_actions.append(bpyaction)
+            if armobj.animation_data is not None:
+                for animidx, bpy_nla_track in enumerate(
+                    armobj.animation_data.nla_tracks
+                ):
+                    bpy_nla_strip = bpy_nla_track.strips[0]
+                    bpyaction = bpy_nla_strip.action
+                    armobj.animation_data.action = bpyaction
+                    all_actions.append(bpyaction)
 
-                this_anim_scalehide_bones = set(animidx_to_scalehide_bones[animidx])
-                all_scalehide_bones = set(
-                    chain.from_iterable(animidx_to_scalehide_bones.values())
-                )
-                not_this_anim_scalehide_bones = all_scalehide_bones.difference(
-                    this_anim_scalehide_bones
-                )
-                # set frame 0 to scale 0 if there isn't already a scale keyframe there
-                for scalehide_bonename in not_this_anim_scalehide_bones:
-                    scalehide_posebone = armobj.pose.bones[scalehide_bonename]
-                    if not has_scale_keyframe_at_frame(armobj, scalehide_bonename, 0):
-                        scalehide_posebone.scale = (0, 0, 0)
-                        scalehide_posebone.keyframe_insert("scale", frame=0)
+                    this_anim_scalehide_bones = set(animidx_to_scalehide_bones[animidx])
+                    all_scalehide_bones = set(
+                        chain.from_iterable(animidx_to_scalehide_bones.values())
+                    )
+                    not_this_anim_scalehide_bones = all_scalehide_bones.difference(
+                        this_anim_scalehide_bones
+                    )
+                    # set frame 0 to scale 0 if there isn't already a scale keyframe there
+                    for scalehide_bonename in not_this_anim_scalehide_bones:
+                        scalehide_posebone = armobj.pose.bones[scalehide_bonename]
+                        if not has_scale_keyframe_at_frame(
+                            armobj, scalehide_bonename, 0
+                        ):
+                            scalehide_posebone.scale = (0, 0, 0)
+                            scalehide_posebone.keyframe_insert("scale", frame=0)
 
-                # set frame-by-frame visibility of each default pm2's scalehide bone
-                # and other fcurve set/cleanup
-                set_action_interpolation(bpyaction)
-                simplify_scalehide_fcurves(bpyaction)
-                set_default_scalehide_bones_visibility(
-                    boneidx_to_default_scalehide_bonename,
-                    boneidx_to_scalehide_bones,
-                    bpyaction,
-                )
-                set_action_interpolation(bpyaction)
+                    # set frame-by-frame visibility of each default pm2's scalehide bone
+                    # and other fcurve set/cleanup
+                    set_action_interpolation(bpyaction)
+                    simplify_scalehide_fcurves(bpyaction)
+                    set_default_scalehide_bones_visibility(
+                        boneidx_to_default_scalehide_bonename,
+                        boneidx_to_scalehide_bones,
+                        bpyaction,
+                    )
+                    set_action_interpolation(bpyaction)
+
             delete_unused_default_pm2meshes(
                 default_scalehide_bonename_to_pm2mesh, armobj, all_actions
             )
@@ -618,15 +634,16 @@ class GhsImporter:
         if self.anim_method in ("1LONG", "1LONG_EVERY100"):
             # set frame-by-frame visibility of each default pm2's scalehide bone
             # and other fcurve set/cleanup
-            bpyaction = original_armobj.animation_data.action
-            set_action_interpolation(bpyaction)
-            simplify_scalehide_fcurves(bpyaction)
-            set_default_scalehide_bones_visibility(
-                boneidx_to_default_scalehide_bonename,
-                boneidx_to_scalehide_bones,
-                bpyaction,
-            )
-            set_action_interpolation(bpyaction)
+            if armobj.animation_data is not None:
+                bpyaction = original_armobj.animation_data.action
+                set_action_interpolation(bpyaction)
+                simplify_scalehide_fcurves(bpyaction)
+                set_default_scalehide_bones_visibility(
+                    boneidx_to_default_scalehide_bonename,
+                    boneidx_to_scalehide_bones,
+                    bpyaction,
+                )
+                set_action_interpolation(bpyaction)
             delete_unused_default_pm2meshes(
                 default_scalehide_bonename_to_pm2mesh, armobj
             )
@@ -813,7 +830,10 @@ def delete_unused_default_pm2meshes(
     whether a given scalehide bone is used or not
     """
     if actions is None:
-        actions = [armobj.animation_data.action]
+        if armobj.animation_data is None:
+            actions = []
+        else:
+            actions = [armobj.animation_data.action]
     original_mode = bpy.context.object.mode
     sets_of_editbones_to_remove = []
     sets_of_pm2meshes_to_remove = []
@@ -832,15 +852,17 @@ def delete_unused_default_pm2meshes(
         sets_of_editbones_to_remove.append(editbones_to_remove)
         sets_of_pm2meshes_to_remove.append(pm2meshes_to_remove)
 
-    bpy.ops.object.mode_set(mode="OBJECT")
-    for pm2mesh in set.intersection(*sets_of_pm2meshes_to_remove):
-        bpy.data.meshes.remove(pm2mesh)
+    if sets_of_pm2meshes_to_remove:
+        bpy.ops.object.mode_set(mode="OBJECT")
+        for pm2mesh in set.intersection(*sets_of_pm2meshes_to_remove):
+            bpy.data.meshes.remove(pm2mesh)
 
-    bpy.ops.object.mode_set(mode="EDIT")
-    arm: Armature = armobj.data
-    for edit_bone in arm.edit_bones:
-        if edit_bone.name in set.intersection(*sets_of_editbones_to_remove):
-            arm.edit_bones.remove(edit_bone)
+    if sets_of_editbones_to_remove:
+        bpy.ops.object.mode_set(mode="EDIT")
+        arm: Armature = armobj.data
+        for edit_bone in arm.edit_bones:
+            if edit_bone.name in set.intersection(*sets_of_editbones_to_remove):
+                arm.edit_bones.remove(edit_bone)
 
     bpy.ops.object.mode_set(mode=original_mode)
 
