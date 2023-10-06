@@ -230,7 +230,7 @@ class GhsImporter:
                 ) in original_default_pm2mesh_to_scalehide_bonename.items():
                     meshcopy = default_pm2mesh.copy()
                     bboneidx, pm2suffix = meshcopy.name.split("_")
-                    pm2idx = int(pm2suffix.split(".")[0][1:])
+                    pm2idx = int(pm2suffix.split(".")[0][1:], 16)
                     meshcopy.name = f"{bboneidx}_a{animidx}_p{pm2idx:03x}"
                     pm2meshobj = bpy.data.objects.new(meshcopy.name, meshcopy)
                     collection.objects.link(pm2meshobj)
