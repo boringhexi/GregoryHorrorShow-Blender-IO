@@ -724,11 +724,10 @@ def calc_default_scalehide_fcurves(
         default_mypoints = [(0, 0)] + default_mypoints
     overwriting_mypoints = [fcurve_to_mypoints(fc) for fc in overwriting_fcurves]
     overwriting_sum = sum_scalehide_mypoints(overwriting_mypoints)
-    new_default_mypoints = invert_scalehide_mypoints(overwriting_sum)
-    if default_mypoints:
-        new_default_mypoints = sum_scalehide_mypoints(
-            [default_mypoints, new_default_mypoints]
-        )
+    inverted_overwriting_sum = invert_scalehide_mypoints(overwriting_sum)
+    new_default_mypoints = sum_scalehide_mypoints(
+        [default_mypoints, inverted_overwriting_sum]
+    )
     new_default_mypoints = simplify_scalehide_mypoints(new_default_mypoints)
     for default_fcurve in default_fcurves:
         mypoints_into_fcurve(new_default_mypoints, default_fcurve)
@@ -755,6 +754,12 @@ def sum_scalehide_mypoints(
 
     or at least evaluate every keyframe
     """
+    mypoints_lists = [x for x in mypoints_lists if x]
+    if len(mypoints_lists) == 1:
+        return mypoints_lists[0]
+    if len(mypoints_lists) == 0:
+        return []
+
     # create a mapping to be used later
     last_keyframe = 0
     framenum_to_keyframed_timeline_indices_and_vals = defaultdict(list)
