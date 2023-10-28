@@ -326,6 +326,12 @@ class GhsImporter:
                 next_anim_start_frame = (frame_offset + last_frame + 100) // 100 * 100
             current_anim_endhide_frame = next_anim_start_frame
 
+            if not anim["animation_data"]:
+                # animation is made up entirely of default body parts
+                animidx_to_scalehide_bones[animidx].extend(
+                    boneidx_to_default_scalehide_bonename.values()
+                )
+
             for boneidx, keyframes in enumerate(anim["animation_data"]):
                 parent_bonename = boneidx_to_bonename[boneidx]
 
@@ -605,12 +611,6 @@ class GhsImporter:
                     # for all scalehide bones not in this animation, set frame 0 to
                     # scale 0 if there isn't already a scale keyframe there
                     this_anim_scalehide_bones = set(animidx_to_scalehide_bones[animidx])
-                    if not this_anim_scalehide_bones:
-                        # takes care of case where animation_data == [], i.e. there are
-                        # only default body parts in this animation
-                        this_anim_scalehide_bones = set(
-                            default_scalehide_bonename_to_pm2mesh.keys()
-                        )
                     all_scalehide_bones = set(
                         chain.from_iterable(animidx_to_scalehide_bones.values())
                     )
