@@ -335,6 +335,15 @@ class GhsImporter:
             for boneidx, keyframes in enumerate(anim["animation_data"]):
                 parent_bonename = boneidx_to_bonename[boneidx]
 
+                if not keyframes:
+                    default_scalehide_bonename = boneidx_to_default_scalehide_bonename.get(boneidx)
+                    if default_scalehide_bonename is not None:
+                        animidx_to_scalehide_bones[animidx].append(boneidx_to_default_scalehide_bonename[boneidx])
+                        default_scalehide_bone = armobj.pose.bones[default_scalehide_bonename]
+                        default_scalehide_bone.scale = (1, 1, 1)
+                        default_scalehide_bone.keyframe_insert("scale", frame=0)
+                    continue
+
                 prev_pm2idx = None
                 for keyframeidx, (keyframe, next_keyframe) in enumerate(
                     zip(keyframes, keyframes[1:] + [None])
