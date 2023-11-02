@@ -340,12 +340,20 @@ class GhsImporter:
                 parent_bonename = boneidx_to_bonename[boneidx]
 
                 if not keyframes:
-                    default_scalehide_bonename = boneidx_to_default_scalehide_bonename.get(boneidx)
+                    default_scalehide_bonename = (
+                        boneidx_to_default_scalehide_bonename.get(boneidx)
+                    )
                     if default_scalehide_bonename is not None:
-                        animidx_to_scalehide_bones[animidx].append(boneidx_to_default_scalehide_bonename[boneidx])
-                        default_scalehide_bone = armobj.pose.bones[default_scalehide_bonename]
+                        animidx_to_scalehide_bones[animidx].append(
+                            boneidx_to_default_scalehide_bonename[boneidx]
+                        )
+                        default_scalehide_bone = armobj.pose.bones[
+                            default_scalehide_bonename
+                        ]
                         default_scalehide_bone.scale = (1, 1, 1)
-                        default_scalehide_bone.keyframe_insert("scale", frame=this_anim_start_frame)
+                        default_scalehide_bone.keyframe_insert(
+                            "scale", frame=this_anim_start_frame
+                        )
                     continue
 
                 prev_pm2idx = None
@@ -430,10 +438,16 @@ class GhsImporter:
                             )
                         # and hide this boneidx's default scalehide too, if it isn't
                         # supposed to be shown this anim
-                        default_scalehide_bonename = boneidx_to_default_scalehide_bonename.get(boneidx)
-                        if default_scalehide_bonename is not None and scalehide_posebone.name != default_scalehide_bonename:
+                        default_scalehide_bonename = (
+                            boneidx_to_default_scalehide_bonename.get(boneidx)
+                        )
+                        if (
+                            default_scalehide_bonename is not None
+                            and scalehide_posebone.name != default_scalehide_bonename
+                        ):
                             default_scalehide_bone = armobj.pose.bones[
-                                default_scalehide_bonename]
+                                default_scalehide_bonename
+                            ]
                             default_scalehide_bone.scale = (0, 0, 0)
                             default_scalehide_bone.keyframe_insert(
                                 "scale", frame=this_anim_start_frame
@@ -490,7 +504,7 @@ class GhsImporter:
                             pm2meshobj = pm2importer.bl_meshobj
 
                             # and parent to the scalehide bone
-                            # bpy.ops.object.mode_set(mode="POSE")  # already in Pose mode
+                            # bpy.ops.object.mode_set(mode="POSE")  # already Pose mode
                             pm2meshobj.parent = armobj
                             pm2meshobj.parent_type = "BONE"
                             pm2meshobj.parent_bone = scalehide_bonename
@@ -640,7 +654,7 @@ class GhsImporter:
                     not_this_anim_scalehide_bones = all_scalehide_bones.difference(
                         this_anim_scalehide_bones
                     )
-                    # set frame 0 to scale 0 if there isn't already a scale keyframe there
+                    # set frame 0 to scale 0 if isn't already a scale keyframe there
                     for scalehide_bonename in not_this_anim_scalehide_bones:
                         scalehide_posebone = armobj.pose.bones[scalehide_bonename]
                         if not has_scale_keyframe_at_frame(
@@ -745,8 +759,8 @@ class GhsImporter:
         Prerequisite: all fcurves must be already in CONSTANT interpolation, with all
         keyframe values being either 0 or 1.
 
-        :param default_fcurves: list [x,y,z] of scale fcurves of the default scalehide bone.
-            These fcurves will be modified in-place
+        :param default_fcurves: list [x,y,z] of scale fcurves of the default scalehide
+            bone. These fcurves will be modified in-place
         :param overwriting_fcurves: list of scalehide fcurves of the overwriting pm2s
         """
 
