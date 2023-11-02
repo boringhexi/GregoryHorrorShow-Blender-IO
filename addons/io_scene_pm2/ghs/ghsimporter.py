@@ -61,8 +61,10 @@ def has_scale_keyframe_at_frame(armobj, scalehide_bonename, frame):
             continue
         if curvetype != "scale":
             continue
-        keyframe0 = fcurve.keyframe_points[0]
-        return keyframe0.co[0] == frame
+        for keyframe_point in fcurve.keyframe_points:
+            match = keyframe_point.co[0] == frame
+            if match:
+                return True
     return False
 
 
@@ -194,6 +196,7 @@ class GhsImporter:
         boneidx_to_scalehide_bones = defaultdict(list)
         deleteme_bonenames = []
         made_copies = False
+        next_anim_start_frame = 0
 
         for animidx, (anim, mpr) in enumerate(zip(anims, mprs)):
             is_last_animation = animidx + 1 == len(anims)
@@ -319,6 +322,7 @@ class GhsImporter:
                 bpy_nla_track.mute = True
                 bpy_nla_track.lock = True
 
+            this_anim_start_frame = next_anim_start_frame
             next_anim_start_frame = 0
             if self.anim_method == "1LONG":
                 next_anim_start_frame = frame_offset + last_frame + 1
@@ -341,7 +345,7 @@ class GhsImporter:
                         animidx_to_scalehide_bones[animidx].append(boneidx_to_default_scalehide_bonename[boneidx])
                         default_scalehide_bone = armobj.pose.bones[default_scalehide_bonename]
                         default_scalehide_bone.scale = (1, 1, 1)
-                        default_scalehide_bone.keyframe_insert("scale", frame=0)
+                        default_scalehide_bone.keyframe_insert("scale", frame=this_anim_start_frame)
                     continue
 
                 prev_pm2idx = None
@@ -423,6 +427,16 @@ class GhsImporter:
                         if not is_last_animation:
                             scalehide_posebone.keyframe_insert(
                                 "scale", frame=current_anim_endhide_frame
+                            )
+                        # and hide this boneidx's default scalehide too, if it isn't
+                        # supposed to be shown this anim
+                        default_scalehide_bonename = boneidx_to_default_scalehide_bonename.get(boneidx)
+                        if default_scalehide_bonename is not None and scalehide_posebone.name != default_scalehide_bonename:
+                            default_scalehide_bone = armobj.pose.bones[
+                                default_scalehide_bonename]
+                            default_scalehide_bone.scale = (0, 0, 0)
+                            default_scalehide_bone.keyframe_insert(
+                                "scale", frame=this_anim_start_frame
                             )
                         # place additional keyframe at anim start if the first keyframe
                         # is late; helps prevent pm2 from being hidden after the end of
@@ -795,7 +809,7 @@ def sum_scalehide_mypoints(
     current_val_per_timelines = [1] * len(mypoints_lists)
 
     summed_timeline = []
-    for framenum in range(int(last_keyframe)):
+    for framenum in range(int(last_keyframe + 1)):
         keyframed_timeline_indices_and_vals = (
             framenum_to_keyframed_timeline_indices_and_vals[framenum]
         )
