@@ -179,16 +179,19 @@ class GhsImporter:
         else:  # elif self.anim_method = "SEPARATE_ARMATURES"
             armobj = None
 
-        # get full animation lengths in advance from keyframes
-        animlengths = dict()
-        for animidx, anim in enumerate(anims):
-            anim_len = 0
+        # get each anim's full length in advance by checking its mpr and keyframes.
+        # it's used later for 1LONG anim concatenation and Action/NLA strip length.
+        fullanimlengths = dict()
+        for animidx, (mpr, anim) in enumerate(zip(mprs, anims)):
+            full_anim_len = anim["anim_len"]
+            for boneposedata in mpr.values():
+                full_anim_len = max(full_anim_len, len(boneposedata["pos"]))
             for keyframes in anim["animation_data"]:
                 for keyframe in keyframes:
                     keyframe_start = keyframe["keyframe_start"]
                     if keyframe_start < 999:
-                        anim_len = max(anim_len, keyframe_start)
-            animlengths[animidx] = anim_len
+                        full_anim_len = max(full_anim_len, keyframe_start)
+            fullanimlengths[animidx] = int(full_anim_len)
 
         frame_offset = 0
         pm2idx_to_driverbone = dict()
@@ -255,18 +258,11 @@ class GhsImporter:
             # animate armature using mpr
             bpy.ops.object.mode_set(mode="POSE")
             # iterate through mpr bones, position pose bones
-            last_frame = 0
             for boneidx, boneposedata in mpr.items():
                 bpybonename = boneidx_to_bonename[boneidx]
                 bpyposebone = armobj.pose.bones[bpybonename]
                 bpyposebone.rotation_mode = "ZXY"  # pretty sure it's this and not ZYX
                 num_frames = len(boneposedata["pos"])
-                last_frame = max(
-                    # last_frame, frame_offset + num_frames, animlengths[animidx]
-                    last_frame,
-                    num_frames,
-                    animlengths[animidx],
-                )
                 for frame in range(num_frames):
                     pos_raw = boneposedata["pos"][frame]
                     pos = Vector(pos_raw)
@@ -309,14 +305,14 @@ class GhsImporter:
             if self.anim_method == "DRIVER" and armobj.animation_data is not None:
                 bpyaction: Action = armobj.animation_data.action
                 anim_name = str(animidx)
-                anim_len = anim["anim_len"]
-                bpyaction.frame_end = anim_len
+                full_anim_len = fullanimlengths[animidx]
+                bpyaction.frame_end = full_anim_len
                 # put this Action into a new NLA track/strip
                 bpy_nla_track = armobj.animation_data.nla_tracks.new()
                 bpy_nla_track.name = anim_name
                 bpy_nla_strip = bpy_nla_track.strips.new(anim_name, 0, bpyaction)
                 bpy_nla_strip.name = anim_name  # because it didn't stick the first time
-                bpy_nla_strip.action_frame_end = anim_len
+                bpy_nla_strip.action_frame_end = full_anim_len
                 # lock and mute all NLA tracks, just like the glTF importer. This way an
                 # animation only plays when it is starred/solo'd in the GUI
                 bpy_nla_track.mute = True
@@ -324,6 +320,7 @@ class GhsImporter:
 
             this_anim_start_frame = next_anim_start_frame
             next_anim_start_frame = 0
+            last_frame = fullanimlengths[animidx]
             if self.anim_method == "1LONG":
                 next_anim_start_frame = frame_offset + last_frame + 1
             elif self.anim_method == "1LONG_EVERY100":
