@@ -761,32 +761,29 @@ class GhsImporter:
         :param overwriting_fcurves: list of scalehide fcurves of the overwriting pm2s
         """
 
-        default_mypoints = fcurve_to_mypoints(default_fcurves[0])
+        default_timeline = fcurve_to_timeline(default_fcurves[0])
         if (
             self.anim_method in ("1LONG", "1LONG_EVERY100")
-            and default_mypoints
-            and default_mypoints[0][0] != 0
+            and default_timeline
+            and default_timeline[0][0] != 0
         ):
             # fixes a bug in 1LONG mode where when the same pm2mesh is both a default
             # and overwriting pm2mesh, it would not be properly hidden until later in
             # the timeline.
-            default_mypoints = [(0, 0)] + default_mypoints
-        overwriting_mypoints = [fcurve_to_mypoints(fc) for fc in overwriting_fcurves]
-        overwriting_sum = sum_scalehide_mypoints(overwriting_mypoints)
-        inverted_overwriting_sum = invert_scalehide_mypoints(overwriting_sum)
-        new_default_mypoints = sum_scalehide_mypoints(
-            [default_mypoints, inverted_overwriting_sum]
+            default_timeline = [(0, 0)] + default_timeline
+        overwriting_timelines = [fcurve_to_timeline(fc) for fc in overwriting_fcurves]
+        overwriting_sum = sum_scalehide_timelines(overwriting_timelines)
+        inverted_overwriting_sum = invert_scalehide_timeline(overwriting_sum)
+        new_default_timeline = sum_scalehide_timelines(
+            [default_timeline, inverted_overwriting_sum]
         )
-        new_default_mypoints = simplify_scalehide_mypoints(new_default_mypoints)
+        new_default_timeline = simplify_scalehide_timeline(new_default_timeline)
         for default_fcurve in default_fcurves:
-            mypoints_into_fcurve(new_default_mypoints, default_fcurve)
+            timeline_into_fcurve(new_default_timeline, default_fcurve)
 
 
-def fcurve_to_mypoints(fcurve: FCurve) -> list[tuple[int, float]]:
-    """get mypoints from fcurve keyframes
-
-    "mypoints" are nothing more than a list of (framenum, value)
-    """
+def fcurve_to_timeline(fcurve: FCurve) -> list[tuple[int, float]]:
+    """get timeline from fcurve keyframes"""
     num_keyframes = len(fcurve.keyframe_points)
     if num_keyframes == 0:
         return []
@@ -796,34 +793,36 @@ def fcurve_to_mypoints(fcurve: FCurve) -> list[tuple[int, float]]:
     return [(seq[i], seq[i + 1]) for i in range(0, len(seq), 2)]
 
 
-def sum_scalehide_mypoints(
-    mypoints_lists: list[list[tuple[int, float]]]
+def sum_scalehide_timelines(
+    timelines: list[list[tuple[int, float]]]
 ) -> list[tuple[int, float]]:
-    """2nd attempt, let's try something more certain: evaluate every frame
+    """return the sum of all the timelines (for a given definition of "sum")
 
-    or at least evaluate every keyframe
+    :param timelines: list of timelines to be summed
+    :return: timeline where each value is either 0 (if all timelines at that frame were
+        0) or 1 (if any timeline at that frame was 1)
     """
-    mypoints_lists = [x.copy() for x in mypoints_lists if x]
-    if len(mypoints_lists) == 1:
-        return mypoints_lists[0]
-    if len(mypoints_lists) == 0:
+    timelines = [x.copy() for x in timelines if x]
+    if len(timelines) == 1:
+        return timelines[0]
+    if len(timelines) == 0:
         return []
 
     # If a timeline lacks a keyframe at frame 0, give it one
-    for mypoints_list in mypoints_lists:
-        firstframe, firstval = mypoints_list[0]
+    for timeline in timelines:
+        firstframe, firstval = timeline[0]
         if firstframe > 0:
-            mypoints_list.insert(0, (0, firstval))
+            timeline.insert(0, (0, firstval))
 
     # create a mapping to be used later
     last_keyframe = 0
     framenum_to_keyframed_timeline_indices_and_vals = defaultdict(list)
-    for i, mypoints in enumerate(mypoints_lists):
-        for framenum, value in mypoints:
+    for i, timeline in enumerate(timelines):
+        for framenum, value in timeline:
             framenum_to_keyframed_timeline_indices_and_vals[framenum].append((i, value))
             last_keyframe = max(last_keyframe, framenum)
 
-    current_val_per_timelines = [1] * len(mypoints_lists)
+    current_val_per_timelines = [1] * len(timelines)
 
     summed_timeline = []
     for framenum in range(int(last_keyframe + 1)):
@@ -839,16 +838,16 @@ def sum_scalehide_mypoints(
     return summed_timeline
 
 
-def invert_scalehide_mypoints(
-    mypoints: list[tuple[int, float]]
+def invert_scalehide_timeline(
+    timeline: list[tuple[int, float]]
 ) -> list[tuple[int, float]]:
-    """invert the values of mypoints (for a given definition of "invert")
+    """invert the values of timeline (for a given definition of "invert")
 
-    :param mypoints: list of (framenum, value)
+    :param timeline: list of (framenum, value)
     :return: list of (framenum, value) where value is 0 if it was 1, or 1 if it was 0
     """
     ret = []
-    for framenum, value in mypoints:
+    for framenum, value in timeline:
         if value == 0:
             value = 1
         else:  # elif value == 1:
@@ -857,21 +856,21 @@ def invert_scalehide_mypoints(
     return ret
 
 
-def simplify_scalehide_mypoints(
-    mypoints: list[tuple[int, float]]
+def simplify_scalehide_timeline(
+    timeline: list[tuple[int, float]]
 ) -> list[tuple[int, float]]:
-    return mypoints  # TODO
+    return timeline  # TODO
 
 
-def mypoints_into_fcurve(mypoints: list[tuple[int, float]], fcurve: FCurve) -> None:
-    """insert mypoints into fcurve as keyframes
+def timeline_into_fcurve(timeline: list[tuple[int, float]], fcurve: FCurve) -> None:
+    """insert timeline into fcurve as keyframes
 
-    modifies fcurve in-place, replacing its keyframes mypoints
+    modifies fcurve in-place, replacing its keyframes with those from timeline
     """
-    num_keyframes = len(mypoints)
+    num_keyframes = len(timeline)
     if num_keyframes == 0:
         pass  # TODO just delete the fcurve from the action instead?
-    seq = list(chain.from_iterable(mypoints))
+    seq = list(chain.from_iterable(timeline))
     fcurve.keyframe_points.clear()
     fcurve.keyframe_points.add(count=num_keyframes)
     fcurve.keyframe_points.foreach_set("co", seq)
@@ -933,10 +932,10 @@ def delete_unused_default_pm2meshes(
 
 
 def fcurve_is_all0(fcurve: FCurve) -> bool:
-    mypoints = fcurve_to_mypoints(fcurve)
-    if not mypoints:
+    timeline = fcurve_to_timeline(fcurve)
+    if not timeline:
         return False
-    framenums, values = zip(*mypoints)
+    framenums, values = zip(*timeline)
     return not any(values)
 
 
