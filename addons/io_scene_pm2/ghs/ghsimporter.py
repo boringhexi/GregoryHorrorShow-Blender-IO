@@ -803,11 +803,17 @@ def sum_scalehide_mypoints(
 
     or at least evaluate every keyframe
     """
-    mypoints_lists = [x for x in mypoints_lists if x]
+    mypoints_lists = [x.copy() for x in mypoints_lists if x]
     if len(mypoints_lists) == 1:
         return mypoints_lists[0]
     if len(mypoints_lists) == 0:
         return []
+
+    # If a timeline lacks a keyframe at frame 0, give it one
+    for mypoints_list in mypoints_lists:
+        firstframe, firstval = mypoints_list[0]
+        if firstframe > 0:
+            mypoints_list.insert(0, (0, firstval))
 
     # create a mapping to be used later
     last_keyframe = 0
@@ -822,8 +828,10 @@ def sum_scalehide_mypoints(
     summed_timeline = []
     for framenum in range(int(last_keyframe + 1)):
         keyframed_timeline_indices_and_vals = (
-            framenum_to_keyframed_timeline_indices_and_vals[framenum]
+            framenum_to_keyframed_timeline_indices_and_vals.get(framenum)
         )
+        if keyframed_timeline_indices_and_vals is None:
+            continue
         for timeline_i, value in keyframed_timeline_indices_and_vals:
             current_val_per_timelines[timeline_i] = value
         summed_value = max(current_val_per_timelines)
