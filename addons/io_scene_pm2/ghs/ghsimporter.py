@@ -381,6 +381,7 @@ class GhsImporter:
                             f'{keyframe["interp_type"]}'
                         )
                         interp_start = interp_end = 0
+                    interp_shapekey_constant = interp_start == interp_end
 
                     # create scalehide bone or retrieve existing one
                     if pm2idx in pm2idx_to_scalehidebone:
@@ -551,6 +552,15 @@ class GhsImporter:
                                     "location",
                                     frame=frame_offset + keyframe_start,
                                 )
+                                bpyaction = armobj.animation_data.action
+                                if interp_shapekey_constant:
+                                    set_action_1frame_interpolation(
+                                        bpyaction, -1, ("location",), "CONSTANT"
+                                    )
+                                else:
+                                    set_action_1frame_interpolation(
+                                        bpyaction, -1, ("location",), "LINEAR"
+                                    )
                                 if (
                                     next_keyframe is not None
                                     and next_keyframe["keyframe_start"] < 999
@@ -571,9 +581,14 @@ class GhsImporter:
                                 skaction = (
                                     pm2meshobj.data.shape_keys.animation_data.action
                                 )
-                                set_action_1frame_interpolation(
-                                    skaction, -1, ("value",), "LINEAR"
-                                )
+                                if interp_shapekey_constant:
+                                    set_action_1frame_interpolation(
+                                        skaction, -1, ("value",), "CONSTANT"
+                                    )
+                                else:
+                                    set_action_1frame_interpolation(
+                                        skaction, -1, ("value",), "LINEAR"
+                                    )
                                 shapekeyactions.add(skaction)
                                 if self.anim_method in ("1LONG", "1LONG_EVERY100"):
                                     # prevent shapekey value from being held over from
