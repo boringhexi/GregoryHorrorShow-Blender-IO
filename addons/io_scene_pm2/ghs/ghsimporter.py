@@ -305,14 +305,14 @@ class GhsImporter:
             if self.anim_method == "DRIVER" and armobj.animation_data is not None:
                 bpyaction: Action = armobj.animation_data.action
                 anim_name = str(animidx)
-                full_anim_len = fullanimlengths[animidx]
-                bpyaction.frame_end = full_anim_len
                 # put this Action into a new NLA track/strip
                 bpy_nla_track = armobj.animation_data.nla_tracks.new()
                 bpy_nla_track.name = anim_name
                 bpy_nla_strip = bpy_nla_track.strips.new(anim_name, 0, bpyaction)
                 bpy_nla_strip.name = anim_name  # because it didn't stick the first time
-                bpy_nla_strip.action_frame_end = full_anim_len
+                bpy_nla_strip.action_frame_end = anim["anim_len"] - 1
+                # uncomment line below for full anim length in DRIVER/SEPARATE_ARMATURES
+                # bpy_nla_strip.action_frame_end = fullanimlengths[animidx]
                 # lock and mute all NLA tracks, just like the glTF importer. This way an
                 # animation only plays when it is starred/solo'd in the GUI
                 bpy_nla_track.mute = True
@@ -631,6 +631,7 @@ class GhsImporter:
                 # set frame-by-frame visibility of each default pm2's scalehide bone
                 # and other fcurve set/cleanup
                 bpyaction: Action = armobj.animation_data.action
+                bpyaction.frame_end = anim["anim_len"] - 1
                 set_action_interpolation(bpyaction)
                 simplify_scalehide_fcurves(bpyaction)
                 self.set_default_scalehide_bones_visibility(
