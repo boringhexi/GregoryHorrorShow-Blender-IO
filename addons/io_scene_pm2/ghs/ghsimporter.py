@@ -354,10 +354,15 @@ class GhsImporter:
                     continue
 
                 prev_pm2idx = None
+                first_delta_frame = None
                 for keyframeidx, (keyframe, next_keyframe) in enumerate(
                     zip(keyframes, keyframes[1:] + [None])
                 ):
                     keyframe_start = keyframe["keyframe_start"]
+                    if next_keyframe is not None:
+                        next_keyframe_start = next_keyframe["keyframe_start"]
+                    else:
+                        next_keyframe_start = None
                     if keyframe_start >= 999:
                         break
                     pm2idx = keyframe["pm2"]
@@ -381,6 +386,23 @@ class GhsImporter:
                             f'{keyframe["interp_type"]}'
                         )
                         interp_start = interp_end = 0
+
+                    # handle situations where keyframes are non-increasing frame order
+                    if next_keyframe_start is not None:
+                        if first_delta_frame is not None:
+                            interpscale_start = 1 - (
+                                next_keyframe_start - first_delta_frame
+                            ) / (next_keyframe_start - keyframe_start)
+                            interp_start = interp_start + interpscale_start * (
+                                interp_end - interp_start
+                            )
+                            keyframe_start = first_delta_frame
+
+                        if next_keyframe_start <= keyframe_start:
+                            first_delta_frame = keyframe_start + 1
+                        else:
+                            first_delta_frame = None
+
                     interp_shapekey_constant = interp_start == interp_end
 
                     # create scalehide bone or retrieve existing one
@@ -473,14 +495,20 @@ class GhsImporter:
                             )
                     if pm2idx != next_pm2idx:
                         scalehide_posebone.scale = (0, 0, 0)
-                        if (
-                            next_keyframe is not None
-                            and next_keyframe["keyframe_start"] < 999
-                        ):
+                        if next_keyframe_start is not None and next_keyframe_start < 999:
                             scalehide_posebone.keyframe_insert(
                                 "scale",
-                                frame=frame_offset + next_keyframe["keyframe_start"],
+                                frame=frame_offset + next_keyframe_start,
                             )
+                    # extra case where scalehide bone is hidden: overwritten by a later
+                    # keyframe that has a lower or equal keyframe_start
+                    if first_delta_frame is not None:
+                        scalehide_posebone.scale = (0, 0, 0)
+                        scalehide_posebone.keyframe_insert(
+                            "scale",
+                            frame=frame_offset + first_delta_frame,
+                        )
+
                     prev_pm2idx = pm2idx
 
                     # load model for this keyframe or retrieve existing one
@@ -562,14 +590,13 @@ class GhsImporter:
                                         bpyaction, -1, ("location",), "LINEAR"
                                     )
                                 if (
-                                    next_keyframe is not None
-                                    and next_keyframe["keyframe_start"] < 999
+                                    next_keyframe_start is not None
+                                    and next_keyframe_start < 999
                                 ):
                                     driver_posebone.location.x = interp_end
                                     driver_posebone.keyframe_insert(
                                         "location",
-                                        frame=frame_offset
-                                        + next_keyframe["keyframe_start"],
+                                        frame=frame_offset + next_keyframe_start,
                                     )
 
                             else:
@@ -605,13 +632,12 @@ class GhsImporter:
 
                                 if (
                                     next_keyframe is not None
-                                    and next_keyframe["keyframe_start"] < 999
+                                    and next_keyframe_start < 999
                                 ):
                                     shapekey.value = interp_end
                                     shapekey.keyframe_insert(
                                         "value",
-                                        frame=frame_offset
-                                        + next_keyframe["keyframe_start"],
+                                        frame=frame_offset + next_keyframe_start,
                                     )
 
             if self.anim_method in ("1LONG", "1LONG_EVERY100"):
