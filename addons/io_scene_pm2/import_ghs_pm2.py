@@ -1,7 +1,8 @@
 import os.path
 
-from .ghs.findimportdirs import find_import_dirs
+from .ghs.findimportdirs import find_ghs_import_dirs, find_mappm2_tex_dir
 from .ghs.ghsimporter import GhsImporter
+from .mappm2.mappm2importer import MapPm2Importer
 from .pm2.pm2importer import Pm2Importer
 from .pm2.pm2model import Pm2Model
 
@@ -17,12 +18,17 @@ def load_ghs_pm2(
         filepath = os.path.join(dirname, file.name)
         ext = os.path.splitext(file.name)[1]
         if ext == ".ghs":
-            texdir, pm2dir, mprdir = find_import_dirs(filepath)
+            texdir, pm2dir, mprdir = find_ghs_import_dirs(filepath)
             bl_name = file.name
             ghsimporter = GhsImporter(
                 filepath, pm2dir, mprdir, bl_name, anim_method="DRIVER"
             )
             ghsimporter.import_stuff()
+        elif ext == ".map-pm2":
+            texdir = find_mappm2_tex_dir(filepath)
+            bl_name = file.name
+            mappm2importer = MapPm2Importer(filepath, bl_name)
+            mappm2importer.import_mappm2()
         elif ext == ".pm2":
             with open(filepath, "rb") as fp:
                 pm2model = Pm2Model.from_file(fp)

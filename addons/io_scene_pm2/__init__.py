@@ -3,12 +3,12 @@ from bpy.props import CollectionProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
-    "name": "Gregory Horror Show GHS/PM2 format",
+    "name": "Gregory Horror Show GHS/MAP-PM2 format",
     "author": "boringhexi",
     "version": (0, 1, 2),
     "blender": (3, 5, 0),
     "location": "File > Import",
-    "description": "For .ghs and .pm2 files from Gregory Horror Show (PS2)",
+    "description": "For .ghs and .map-pm2 files from Gregory Horror Show (PS2)",
     "warning": "",
     "doc_url": "",
     "category": "Import-Export",
@@ -30,6 +30,8 @@ if "_this_file_was_already_loaded" in locals():
         ".ghs.meshposrot",
         ".ghs.ghsimporter",
         ".ghs.findimportdirs",
+        ".mappm2.mappm2container",
+        ".mappm2.mappm2importer",
         ".import_ghs_pm2",
     )
     reload_modules(*modules_to_reload, pkg=__package__)
@@ -38,13 +40,13 @@ _this_file_was_already_loaded = True  # to detect the reload next time
 
 
 class ImportGHSPM2(bpy.types.Operator, ImportHelper):
-    """Import GHS and/or PM2 files"""
+    """Import GHS, MAP-PM2, and/or PM2 files"""
 
     bl_idname = "import_scene.ghspm2"
-    bl_label = "Import GHS/PM2"
+    bl_label = "Import GHS/MAP-PM2"
     bl_options = {"REGISTER", "UNDO"}
 
-    filter_glob: StringProperty(default="*.ghs;*.pm2", options={"HIDDEN"})
+    filter_glob: StringProperty(default="*.ghs;*.map-pm2;*.pm2", options={"HIDDEN"})
     files: CollectionProperty(type=bpy.types.PropertyGroup)
 
     def execute(self, context):
@@ -81,7 +83,9 @@ class GHSPM2_PT_import_options(bpy.types.Panel):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(ImportGHSPM2.bl_idname, text="Gregory Horror Show (.ghs/.pm2)")
+    self.layout.operator(
+        ImportGHSPM2.bl_idname, text="Gregory Horror Show (.ghs/.map-pm2)"
+    )
 
 
 classes = (

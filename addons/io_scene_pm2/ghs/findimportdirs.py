@@ -5,7 +5,7 @@ class ImportDirsNotFoundError(FileNotFoundError):
     pass
 
 
-def find_import_dirs(ghs_path):
+def find_ghs_import_dirs(ghs_path):
     """automatically determine texdir, pm2dir, and mprdir from ghs_path
 
     mprdir can be None
@@ -53,3 +53,10 @@ def find_import_dirs(ghs_path):
         raise ImportDirsNotFoundError()
 
     return texdir, pm2dir, mprdir
+
+
+def find_mappm2_tex_dir(mappm2_path):
+    """automatically determine texdir from mappm2_path"""
+    mappm2_path = Path(mappm2_path)
+    mappm2_dir = mappm2_path.parent
+    return mappm2_dir / "000.tex"
