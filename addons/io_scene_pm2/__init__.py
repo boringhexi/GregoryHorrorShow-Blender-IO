@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import CollectionProperty, StringProperty
+from bpy.props import CollectionProperty, EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
@@ -49,6 +49,37 @@ class ImportGHSPM2(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(default="*.ghs;*.map-pm2;*.pm2", options={"HIDDEN"})
     files: CollectionProperty(type=bpy.types.PropertyGroup)
 
+    anim_method: EnumProperty(
+        name="Anim method",
+        items=[
+            (
+                "DRIVER",
+                "Driver",
+                "Imports animations as separate NLA tracks. Works well as an animation "
+                "viewer, but may have trouble exporting animations to other formats",
+            ),
+            (
+                "1LONG",
+                "Single Timeline",
+                "Imports all animations into the timeline in sequence",
+            ),
+            (
+                "1LONG_EVERY100",
+                "Single Timeline (starts every 100)",
+                "Each animation starts on a multiple of 100 frames. Suitable for "
+                "exporting to Unity",
+            ),
+            (
+                "SEPARATE_ARMATURES",
+                "Separate Armatures",
+                "Creates a new armature for each animation. Suitable for exporting "
+                "each animation to a separate file",
+            ),
+        ],
+        description="How .ghs animations should be imported",
+        default="DRIVER",
+    )
+
     def execute(self, context):
         # to reduce Blender startup time, delay import until now
         from . import import_ghs_pm2
@@ -63,7 +94,7 @@ class ImportGHSPM2(bpy.types.Operator, ImportHelper):
 class GHSPM2_PT_import_options(bpy.types.Panel):
     bl_space_type = "FILE_BROWSER"
     bl_region_type = "TOOL_PROPS"
-    bl_label = "Options"
+    bl_label = "GHS Options"
     bl_parent_id = "FILE_PT_operator"
 
     @classmethod
@@ -71,7 +102,7 @@ class GHSPM2_PT_import_options(bpy.types.Panel):
         sfile = context.space_data
         operator = sfile.active_operator
 
-        return operator.bl_idname == "IMPORT_SCENE_OT_pm2"
+        return operator.bl_idname == "IMPORT_SCENE_OT_ghspm2"
 
     def draw(self, context):
         layout = self.layout
@@ -80,6 +111,8 @@ class GHSPM2_PT_import_options(bpy.types.Panel):
 
         sfile = context.space_data
         operator = sfile.active_operator
+
+        layout.prop(operator, "anim_method")
 
 
 def menu_func_import(self, context):

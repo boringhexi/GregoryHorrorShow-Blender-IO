@@ -85,6 +85,13 @@ class GhsImporter:
         self.pm2dir = Path(pm2dir)
         self.mprdir = Path(mprdir) if mprdir is not None else None
         self.bl_name = bl_name
+        if anim_method not in (
+            "1LONG",
+            "1LONG_EVERY100",
+            "DRIVER",
+            "SEPARATE_ARMATURES",
+        ):
+            raise ValueError(f"Unknown anim_method {anim_method!r}")
         self.anim_method = anim_method
         self._texoffset_materials_to_reuse: dict[str, Material] = dict()
 

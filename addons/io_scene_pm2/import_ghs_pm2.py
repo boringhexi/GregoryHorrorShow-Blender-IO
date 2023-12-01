@@ -12,6 +12,7 @@ def load_ghs_pm2(
     *,
     filepath,
     files,
+    anim_method="DRIVER"
 ):
     dirname = os.path.dirname(filepath)
     for file in files:
@@ -21,7 +22,7 @@ def load_ghs_pm2(
             texdir, pm2dir, mprdir = find_ghs_import_dirs(filepath)
             bl_name = file.name
             ghsimporter = GhsImporter(
-                filepath, pm2dir, mprdir, bl_name, anim_method="DRIVER"
+                filepath, pm2dir, mprdir, bl_name, anim_method=anim_method
             )
             ghsimporter.import_stuff()
         elif ext == ".map-pm2":
