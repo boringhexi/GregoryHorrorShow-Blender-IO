@@ -7,7 +7,7 @@ from .pm2.pm2importer import Pm2Importer
 from .pm2.pm2model import Pm2Model
 
 
-def load_ghs_pm2(
+def load_ghs_mappm2(
     context,
     *,
     filepath,
@@ -47,7 +47,7 @@ def load_with_profiler(context, **keywords):
     import pstats
 
     pro = cProfile.Profile()
-    pro.runctx("load_ghs_pm2(context, **keywords)", globals(), locals())
+    pro.runctx("load_ghs_mappm2(context, **keywords)", globals(), locals())
     st = pstats.Stats(pro)
     st.sort_stats("time")
     st.print_stats(0.1)
@@ -57,5 +57,5 @@ def load_with_profiler(context, **keywords):
 
 def load(context, **keywords):
     # load_with_profiler(context, **keywords)
-    load_ghs_pm2(context, **keywords)
+    load_ghs_mappm2(context, **keywords)
     return {"FINISHED"}

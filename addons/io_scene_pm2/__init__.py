@@ -32,17 +32,17 @@ if "_this_file_was_already_loaded" in locals():
         ".ghs.findimportdirs",
         ".mappm2.mappm2container",
         ".mappm2.mappm2importer",
-        ".import_ghs_pm2",
+        ".import_ghs_mappm2",
     )
     reload_modules(*modules_to_reload, pkg=__package__)
 _this_file_was_already_loaded = True  # to detect the reload next time
 # After this point, any imports of the modules above will be up-to-date.
 
 
-class ImportGHSPM2(bpy.types.Operator, ImportHelper):
+class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
     """Import GHS, MAP-PM2, and/or PM2 files"""
 
-    bl_idname = "import_scene.ghspm2"
+    bl_idname = "import_scene.ghsmappm2"
     bl_label = "Import GHS/MAP-PM2"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -82,16 +82,16 @@ class ImportGHSPM2(bpy.types.Operator, ImportHelper):
 
     def execute(self, context):
         # to reduce Blender startup time, delay import until now
-        from . import import_ghs_pm2
+        from . import import_ghs_mappm2
 
         keywords = self.as_keywords(ignore=("filter_glob",))
-        return import_ghs_pm2.load(context, **keywords)
+        return import_ghs_mappm2.load(context, **keywords)
 
     def draw(self, context):
         pass
 
 
-class GHSPM2_PT_import_options(bpy.types.Panel):
+class GHSMAPPM2_PT_import_options(bpy.types.Panel):
     bl_space_type = "FILE_BROWSER"
     bl_region_type = "TOOL_PROPS"
     bl_label = "GHS Options"
@@ -102,7 +102,7 @@ class GHSPM2_PT_import_options(bpy.types.Panel):
         sfile = context.space_data
         operator = sfile.active_operator
 
-        return operator.bl_idname == "IMPORT_SCENE_OT_ghspm2"
+        return operator.bl_idname == "IMPORT_SCENE_OT_ghsmappm2"
 
     def draw(self, context):
         layout = self.layout
@@ -117,13 +117,13 @@ class GHSPM2_PT_import_options(bpy.types.Panel):
 
 def menu_func_import(self, context):
     self.layout.operator(
-        ImportGHSPM2.bl_idname, text="Gregory Horror Show (.ghs/.map-pm2)"
+        ImportGHSMAPPM2.bl_idname, text="Gregory Horror Show (.ghs/.map-pm2)"
     )
 
 
 classes = (
-    ImportGHSPM2,
-    GHSPM2_PT_import_options,
+    ImportGHSMAPPM2,
+    GHSMAPPM2_PT_import_options,
 )
 
 
