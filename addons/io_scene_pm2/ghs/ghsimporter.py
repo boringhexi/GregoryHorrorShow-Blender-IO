@@ -444,7 +444,10 @@ class GhsImporter:
                         parent_editbone = armobj.data.edit_bones[parent_bonename]
                         scalehide_editbone.parent = parent_editbone
                         scalehide_bonename = scalehide_editbone.name
-                        pm2idx_to_scalehidebone[pm2idx] = scalehide_bonename
+                        # save this new scalehide bone to be retrieved later unless it's
+                        # a DELETEME bone, in which case we want a new one each time
+                        if pm2idx is not None:
+                            pm2idx_to_scalehidebone[pm2idx] = scalehide_bonename
                         repeated_bone = False
                     animidx_to_scalehide_bones[animidx].append(scalehide_bonename)
                     boneidx_to_scalehide_bones[boneidx].append(scalehide_bonename)
