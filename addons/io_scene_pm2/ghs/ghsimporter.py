@@ -998,7 +998,7 @@ def delete_deleteme_bones(deleteme_bonenames: list[str], arm: Armature) -> None:
     bpy.ops.object.mode_set(mode="EDIT")
     for edit_bone in arm.edit_bones:
         if edit_bone.name in deleteme_bonenames:
-            print("deleting", edit_bone.name)
+            # print("deleting", edit_bone.name)
             arm.edit_bones.remove(edit_bone)
 
     bpy.ops.object.mode_set(mode=original_mode)
