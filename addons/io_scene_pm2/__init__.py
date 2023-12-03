@@ -54,7 +54,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         items=[
             (
                 "DRIVER",
-                "Driver",
+                "NLA Tracks",
                 "Imports animations as separate NLA tracks. Works well as an animation "
                 "viewer, but may have trouble exporting animations to other formats",
             ),
