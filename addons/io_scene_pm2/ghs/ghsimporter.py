@@ -554,7 +554,7 @@ class GhsImporter:
                                     # Create and parent driver bone
                                     bpy.ops.object.mode_set(mode="EDIT")
                                     driver_editbone = armobj.data.edit_bones.new(
-                                        name=f"{self.bl_name}_driver"
+                                        name=f"b{boneidx}_p{pm2idx:03x}_driver"
                                     )
                                     driver_editbone.head = (0, 0, 0)
                                     driver_editbone.tail = (0, 1, 0)
