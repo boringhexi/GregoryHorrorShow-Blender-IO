@@ -664,7 +664,6 @@ class GhsImporter:
                 # set frame-by-frame visibility of each default pm2's scalehide bone
                 # and other fcurve set/cleanup
                 bpyaction: Action = armobj.animation_data.action
-                bpyaction.frame_end = anim["anim_len"] - 1
                 set_action_interpolation(bpyaction)
                 simplify_scalehide_fcurves(bpyaction)
                 self.set_default_scalehide_bones_visibility(
