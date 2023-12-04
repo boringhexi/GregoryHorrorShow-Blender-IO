@@ -678,7 +678,7 @@ class GhsImporter:
                 delete_unused_default_pm2meshes(
                     default_scalehide_bonename_to_pm2mesh, armobj
                 )
-                delete_deleteme_bones(deleteme_bonenames, armobj.data)
+                delete_deleteme_bones(deleteme_bonenames, armobj)
 
         if self.anim_method == "DRIVER":
             # scale to 0 all scalehide bones not in the current animation
@@ -725,7 +725,7 @@ class GhsImporter:
             delete_unused_default_pm2meshes(
                 default_scalehide_bonename_to_pm2mesh, armobj, all_actions
             )
-            delete_deleteme_bones(deleteme_bonenames, armobj.data)
+            delete_deleteme_bones(deleteme_bonenames, armobj, all_actions)
 
         if self.anim_method in ("1LONG", "1LONG_EVERY100"):
             # set frame-by-frame visibility of each default pm2's scalehide bone
@@ -743,7 +743,7 @@ class GhsImporter:
             delete_unused_default_pm2meshes(
                 default_scalehide_bonename_to_pm2mesh, armobj
             )
-            delete_deleteme_bones(deleteme_bonenames, armobj.data)
+            delete_deleteme_bones(deleteme_bonenames, armobj)
 
         bpy.ops.object.mode_set(mode="OBJECT")
         if self.anim_method == "SEPARATE_ARMATURES" and made_copies:
@@ -938,11 +938,13 @@ def delete_unused_default_pm2meshes(
 ) -> None:
     """remove any pm2mesh and scalehide bone that is always hidden (across all Actions)
 
+    Also remove any fcurves associated with the removed bones
+
     :param default_scalehide_bonename_to_pm2mesh: dict of bone names to mesh datablocks.
     Used to remove any pm2mesh that corresponds to an always-hidden scalehide bone.
     :param armobj: armature object. used to delete unused bones
-    :param actions: if None, use armobj's action, scan through all Actions to see
-    whether a given scalehide bone is used or not
+    :param actions: if None, use armobj's action. Scan through all Actions to see
+    whether a given scalehide bone is used in any of them or not
     """
     if actions is None:
         if armobj.animation_data is None:
@@ -952,6 +954,7 @@ def delete_unused_default_pm2meshes(
     original_mode = bpy.context.object.mode
     sets_of_editbones_to_remove = []
     sets_of_pm2meshes_to_remove = []
+    fcurve_datapaths_unused_in_actions = defaultdict(list)
     bpy.ops.object.mode_set(mode="POSE")
     for action in actions:
         editbones_to_remove = set()
@@ -961,9 +964,14 @@ def delete_unused_default_pm2meshes(
             fcurve_bonename = poseandbonename.split('"')[1]
             if fcurve_bonename in default_scalehide_bonename_to_pm2mesh:
                 if fcurve_is_all0(fcurve):
+                    # If this condition is True every time (i.e. for every Action),
+                    # then later we'll end up removing this editbone, Mesh, and fcurves
                     editbones_to_remove.add(fcurve_bonename)
                     pm2mesh = default_scalehide_bonename_to_pm2mesh[fcurve_bonename]
                     pm2meshes_to_remove.add(pm2mesh)
+                    fcurve_datapaths_unused_in_actions[fcurve.data_path].append(True)
+                else:
+                    fcurve_datapaths_unused_in_actions[fcurve.data_path].append(False)
         sets_of_editbones_to_remove.append(editbones_to_remove)
         sets_of_pm2meshes_to_remove.append(pm2meshes_to_remove)
 
@@ -979,6 +987,15 @@ def delete_unused_default_pm2meshes(
             if edit_bone.name in set.intersection(*sets_of_editbones_to_remove):
                 arm.edit_bones.remove(edit_bone)
 
+    for data_path, unused_in_actions in fcurve_datapaths_unused_in_actions.items():
+        if all(unused_in_actions):
+            for action in actions:
+                # fcurves.find only returns the first axis's fcurve, unless you specify
+                for axis in range(3):
+                    fcurve = action.fcurves.find(data_path, index=axis)
+                    if fcurve is not None:
+                        action.fcurves.remove(fcurve)
+
     bpy.ops.object.mode_set(mode=original_mode)
 
 
@@ -990,18 +1007,39 @@ def fcurve_is_all0(fcurve: FCurve) -> bool:
     return not any(values)
 
 
-def delete_deleteme_bones(deleteme_bonenames: list[str], arm: Armature) -> None:
-    """remove any bone whose name is in deleteme_bonenames
+def delete_deleteme_bones(
+    deleteme_bonenames: list[str],
+    armobj: Object,
+    actions: Optional[list[Action]] = None,
+) -> None:
+    """remove any bone whose name is in deleteme_bonenames, as well as their FCurves
 
     :param deleteme_bonenames: list of bone names
-    :param arm: armature datablock containing the bones
+    :param armobj: armature object containing the bones
+    :param actions: if None, use armobj's action. FCurves associated with the removed
+    bones will be removed from all actions.
     """
+    if actions is None:
+        if armobj.animation_data is None:
+            actions = []
+        else:
+            actions = [armobj.animation_data.action]
+    arm: Armature = armobj.data
     original_mode = bpy.context.object.mode
 
     bpy.ops.object.mode_set(mode="EDIT")
     for edit_bone in arm.edit_bones:
         if edit_bone.name in deleteme_bonenames:
-            # print("deleting", edit_bone.name)
             arm.edit_bones.remove(edit_bone)
+
+    for i, action in enumerate(actions):
+        fcurves_to_remove = []
+        for fcurve in action.fcurves:
+            poseandbonename, curvetype = fcurve.data_path.rsplit(".", maxsplit=1)
+            fcurve_bonename = poseandbonename.split('"')[1]
+            if fcurve_bonename in deleteme_bonenames:
+                fcurves_to_remove.append(fcurve)
+        for fcurve in fcurves_to_remove:
+            action.fcurves.remove(fcurve)
 
     bpy.ops.object.mode_set(mode=original_mode)
