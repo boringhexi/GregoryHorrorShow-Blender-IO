@@ -930,8 +930,6 @@ def timeline_into_fcurve(timeline: list[tuple[int, float]], fcurve: FCurve) -> N
     modifies fcurve in-place, replacing its keyframes with those from timeline
     """
     num_keyframes = len(timeline)
-    if num_keyframes == 0:
-        pass  # TODO just delete the fcurve from the action instead?
     seq = list(chain.from_iterable(timeline))
     fcurve.keyframe_points.clear()
     fcurve.keyframe_points.add(count=num_keyframes)
