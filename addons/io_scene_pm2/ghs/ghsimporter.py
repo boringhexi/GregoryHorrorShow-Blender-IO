@@ -839,6 +839,7 @@ class GhsImporter:
 
 def fcurve_to_timeline(fcurve: FCurve) -> list[tuple[int, float]]:
     """get timeline from fcurve keyframes"""
+    fcurve.update()  # ensure keyframes are in increasing frame order
     num_keyframes = len(fcurve.keyframe_points)
     if num_keyframes == 0:
         return []
@@ -914,7 +915,13 @@ def invert_scalehide_timeline(
 def simplify_scalehide_timeline(
     timeline: list[tuple[int, float]]
 ) -> list[tuple[int, float]]:
-    return timeline  # TODO
+    simplified_timeline = []
+    previous_value = None
+    for framenum, value in timeline:
+        if value != previous_value:
+            simplified_timeline.append((framenum, value))
+        previous_value = value
+    return simplified_timeline
 
 
 def timeline_into_fcurve(timeline: list[tuple[int, float]], fcurve: FCurve) -> None:
@@ -932,7 +939,11 @@ def timeline_into_fcurve(timeline: list[tuple[int, float]], fcurve: FCurve) -> N
 
 
 def simplify_scalehide_fcurves(bpyaction: Action):
-    ...  # TODO as well...
+    for fcurve in bpyaction.fcurves:
+        if fcurve.data_path.endswith("scale"):
+            timeline = fcurve_to_timeline(fcurve)
+            simplified_timeline = simplify_scalehide_timeline(timeline)
+            timeline_into_fcurve(simplified_timeline, fcurve)
 
 
 def delete_unused_default_pm2meshes(
