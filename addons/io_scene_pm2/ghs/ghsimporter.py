@@ -244,7 +244,7 @@ class GhsImporter:
                     meshcopy = default_pm2mesh.copy()
                     bboneidx, pm2suffix = meshcopy.name.split("_")
                     pm2idx = int(pm2suffix.split(".")[0][1:], 16)
-                    meshcopy.name = f"{bboneidx}_a{animidx}_p{pm2idx:03x}"
+                    meshcopy.name = f"a{animidx}_{bboneidx}_p{pm2idx:03x}"
                     pm2meshobj = bpy.data.objects.new(meshcopy.name, meshcopy)
                     collection.objects.link(pm2meshobj)
                     pm2meshobj.parent = armobj
@@ -433,7 +433,7 @@ class GhsImporter:
                             # a scalehide bone for now to assist with calculating the
                             # visibility of the default pm2's scalehide bone later.
                             scalehide_editbone_name = (
-                                f"b{boneidx}_a{animidx}_k{int(keyframe_start)}_DELETEME"
+                                f"a{animidx}_b{boneidx}_k{int(keyframe_start)}_DELETEME"
                             )
                             scalehide_editbone = armobj.data.edit_bones.new(
                                 name=scalehide_editbone_name
@@ -531,9 +531,13 @@ class GhsImporter:
                                 continue
                             with open(pm2path, "rb") as fp:
                                 pm2model = Pm2Model.from_file(fp)
+                            if self.anim_method == "SEPARATE_ARMATURES":
+                                pm2name = f"a{animidx}_b{boneidx}_p{pm2idx:03x}"
+                            else:
+                                pm2name = f"b{boneidx}_p{pm2idx:03x}"
                             pm2importer = Pm2Importer(
                                 pm2model,
-                                bl_name=f"b{boneidx}_p{pm2idx:03x}",
+                                bl_name=pm2name,
                                 texoffset_materials_to_reuse=self._texoffset_materials_to_reuse,
                             )
                             pm2importer.import_scene()
