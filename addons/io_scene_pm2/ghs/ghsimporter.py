@@ -505,7 +505,10 @@ class GhsImporter:
                             )
                     if pm2idx != next_pm2idx:
                         scalehide_posebone.scale = (0, 0, 0)
-                        if next_keyframe_start is not None and next_keyframe_start < 999:
+                        if (
+                            next_keyframe_start is not None
+                            and next_keyframe_start < 999
+                        ):
                             scalehide_posebone.keyframe_insert(
                                 "scale",
                                 frame=frame_offset + next_keyframe_start,
