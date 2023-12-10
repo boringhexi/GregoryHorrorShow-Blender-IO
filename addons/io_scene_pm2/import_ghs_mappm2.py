@@ -7,13 +7,7 @@ from .pm2.pm2importer import Pm2Importer
 from .pm2.pm2model import Pm2Model
 
 
-def load_ghs_mappm2(
-    context,
-    *,
-    filepath,
-    files,
-    anim_method="DRIVER"
-):
+def load_ghs_mappm2(context, *, filepath, files, anim_method="DRIVER"):
     dirname = os.path.dirname(filepath)
     for file in files:
         filepath = os.path.join(dirname, file.name)
