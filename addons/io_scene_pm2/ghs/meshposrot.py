@@ -29,6 +29,3 @@ def mpr_from_file(file: BinaryIO):
             mpr[which_bone]["rot"].append(rot)
 
     return mpr
-
-
-# mpr_sample = { 0: {"pos": [(1, 2, 3)], "rot": [(1, 2, 3)]} }
