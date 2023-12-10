@@ -8,6 +8,7 @@ import bpy
 from bpy.types import Action, Armature, FCurve, Material, Mesh, Object
 from mathutils import Euler, Vector
 
+from ..common.texture import import_textures
 from ..pm2.pm2importer import Pm2Importer
 from ..pm2.pm2model import Pm2Model
 from .meshposrot import mpr_from_file
@@ -69,7 +70,7 @@ def has_scale_keyframe_at_frame(armobj, scalehide_bonename, frame):
 
 
 class GhsImporter:
-    def __init__(self, ghspath, pm2dir, mprdir, bl_name="", anim_method="1LONG"):
+    def __init__(self, ghspath, pm2dir, mprdir, texdir, bl_name="", anim_method="1LONG"):
         """
 
         :param ghspath:
@@ -84,6 +85,7 @@ class GhsImporter:
         self.ghspath = Path(ghspath)
         self.pm2dir = Path(pm2dir)
         self.mprdir = Path(mprdir) if mprdir is not None else None
+        self.texdir = Path(texdir)
         self.bl_name = bl_name
         if anim_method not in (
             "1LONG",
@@ -769,6 +771,9 @@ class GhsImporter:
             # same with the original default body part meshes
             for default_pm2mesh in original_default_pm2mesh_to_scalehide_bonename:
                 bpy.data.meshes.remove(default_pm2mesh)
+
+        # import textures
+        import_textures(self._texoffset_materials_to_reuse, self.texdir)
 
     def set_default_scalehide_bones_visibility(
         self,

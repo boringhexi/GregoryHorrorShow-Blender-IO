@@ -3,19 +3,21 @@ from pathlib import Path
 import bpy
 from bpy.types import Material
 
+from ..common.texture import import_textures
 from ..pm2.pm2importer import Pm2Importer
 from ..pm2.pm2model import Pm2Model
 from .mappm2container import MapPm2Container
 
 
 class MapPm2Importer:
-    def __init__(self, mappm2path, bl_name=""):
+    def __init__(self, mappm2path, texdir, bl_name=""):
         """
 
         :param mappm2path:
         :param bl_name:
         """
         self.mappm2path = Path(mappm2path)
+        self.texdir = texdir
         self.bl_name = bl_name
         self._texoffset_materials_to_reuse: dict[str, Material] = dict()
 
@@ -43,3 +45,6 @@ class MapPm2Importer:
                 texoffset_materials_to_reuse=self._texoffset_materials_to_reuse,
             )
             pm2importer.import_scene()
+
+        # import textures
+        import_textures(self._texoffset_materials_to_reuse, self.texdir)

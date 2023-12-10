@@ -16,13 +16,13 @@ def load_ghs_mappm2(context, *, filepath, files, anim_method="DRIVER"):
             texdir, pm2dir, mprdir = find_ghs_import_dirs(filepath)
             bl_name = file.name
             ghsimporter = GhsImporter(
-                filepath, pm2dir, mprdir, bl_name, anim_method=anim_method
+                filepath, pm2dir, mprdir, texdir, bl_name, anim_method=anim_method
             )
             ghsimporter.import_stuff()
         elif ext == ".map-pm2":
             texdir = find_mappm2_tex_dir(filepath)
             bl_name = file.name
-            mappm2importer = MapPm2Importer(filepath, bl_name)
+            mappm2importer = MapPm2Importer(filepath, texdir, bl_name)
             mappm2importer.import_mappm2()
         elif ext == ".pm2":
             with open(filepath, "rb") as fp:

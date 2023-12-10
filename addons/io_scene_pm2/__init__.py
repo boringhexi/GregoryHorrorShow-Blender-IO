@@ -27,6 +27,7 @@ if "_this_file_was_already_loaded" in locals():
         ".common.reload_modules",
         ".common.datautils",
         ".common.findimportdirs",
+        ".common.texture",
         ".pm2.pm2model",
         ".pm2.pm2importer",
         ".ghs.meshposrot",
