@@ -51,8 +51,8 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(default="*.ghs;*.map-pm2;*.pm2", options={"HIDDEN"})
     files: CollectionProperty(type=bpy.types.PropertyGroup)
 
-    anim_method: EnumProperty(
-        name="Anim method",
+    ghs_anim_method: EnumProperty(
+        name="GHS animation",
         items=[
             (
                 "DRIVER",
@@ -88,7 +88,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
-        layout.prop(self, "anim_method")
+        layout.prop(self, "ghs_anim_method")
 
     def execute(self, context):
         # to reduce Blender startup time, delay import until now
