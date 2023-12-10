@@ -1,6 +1,6 @@
 import os.path
 
-from .ghs.findimportdirs import find_ghs_import_dirs, find_mappm2_tex_dir
+from .common.findimportdirs import find_ghs_import_dirs, find_mappm2_tex_dir
 from .ghs.ghsimporter import GhsImporter
 from .mappm2.mappm2importer import MapPm2Importer
 from .pm2.pm2importer import Pm2Importer

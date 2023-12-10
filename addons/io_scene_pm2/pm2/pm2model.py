@@ -9,7 +9,7 @@ from struct import unpack
 from sys import argv
 from typing import BinaryIO, List, Optional, Sequence, Tuple
 
-from ..common import (
+from ..common.common import (
     read_float32,
     read_sint16,
     read_sint32,

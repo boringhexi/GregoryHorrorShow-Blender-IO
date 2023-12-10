@@ -20,16 +20,16 @@ bl_info = {
 # imported by those modules). So instead, the code below will reload our modules
 # whenever this file is reloaded.
 if "_this_file_was_already_loaded" in locals():
-    from .reload_modules import reload_modules
+    from .common.reload_modules import reload_modules
 
     # Order matters. Reload module B before reloading module A that imports module B
     modules_to_reload = (
-        ".common",
+        ".common.common",
+        ".common.findimportdirs",
         ".pm2.pm2model",
         ".pm2.pm2importer",
         ".ghs.meshposrot",
         ".ghs.ghsimporter",
-        ".ghs.findimportdirs",
         ".mappm2.mappm2container",
         ".mappm2.mappm2importer",
         ".import_ghs_mappm2",
