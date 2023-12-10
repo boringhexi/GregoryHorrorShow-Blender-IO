@@ -142,7 +142,10 @@ class GhsImporter:
         for boneidx, bodypart in enumerate(defaultbodyparts):
             # import default body part pm2
             pm2idx = bodypart["pm2"]
-            if pm2idx is None or pm2idx < 0:
+            if pm2idx is None:  # there is no default pm2 for this bone
+                continue
+            if pm2idx < 0:  # negative pm2idx is specially handled by the game engine
+                print(f"skipping default pm2idx {pm2idx} on bone {boneidx}")
                 continue
             pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
             with open(pm2path, "rb") as fp:
@@ -524,14 +527,21 @@ class GhsImporter:
 
                     prev_pm2idx = pm2idx
 
-                    # load model for this keyframe or retrieve existing one
+                    # If this keyframe has a model, load model for this keyframe or
+                    # retrieve the already-loaded model
                     if pm2idx is not None:
                         if pm2idx in pm2idx_to_meshobj:
                             pm2meshobj = pm2idx_to_meshobj[pm2idx]
                         else:
-                            pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
-                            if not pm2path.is_file():
+                            if pm2idx < 0:
+                                # no known cases, but negative overwriting pm2idxs would
+                                # presumably be specially handled by the game engine
+                                print(
+                                    f"skipping overwriting pm2idx {pm2idx} "
+                                    f"on bone {boneidx}"
+                                )
                                 continue
+                            pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
                             with open(pm2path, "rb") as fp:
                                 pm2model = Pm2Model.from_file(fp)
                             if self.anim_method == "SEPARATE_ARMATURES":
