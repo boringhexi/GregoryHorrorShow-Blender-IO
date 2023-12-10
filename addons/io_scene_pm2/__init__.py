@@ -25,7 +25,7 @@ if "_this_file_was_already_loaded" in locals():
     # Order matters. Reload module B before reloading module A that imports module B
     modules_to_reload = (
         ".common.reload_modules",
-        ".common.common",
+        ".common.datautils",
         ".common.findimportdirs",
         ".pm2.pm2model",
         ".pm2.pm2importer",

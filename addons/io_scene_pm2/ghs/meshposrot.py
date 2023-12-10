@@ -3,7 +3,7 @@ from collections import defaultdict
 from struct import unpack
 from typing import BinaryIO
 
-from ..common.common import read_float32, read_sint16, read_uint32, read_unless_eof
+from ..common.datautils import read_float32, read_sint16, read_uint32, read_unless_eof
 
 
 def mpr_from_file(file: BinaryIO):
