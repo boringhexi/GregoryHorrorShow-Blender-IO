@@ -82,39 +82,20 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         default="DRIVER",
     )
 
+    def draw(self, context):
+        layout = self.layout
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        layout.prop(self, "anim_method")
+
     def execute(self, context):
         # to reduce Blender startup time, delay import until now
         from . import import_ghs_mappm2
 
         keywords = self.as_keywords(ignore=("filter_glob",))
         return import_ghs_mappm2.load(context, **keywords)
-
-    def draw(self, context):
-        pass
-
-
-class GHSMAPPM2_PT_import_options(bpy.types.Panel):
-    bl_space_type = "FILE_BROWSER"
-    bl_region_type = "TOOL_PROPS"
-    bl_label = "GHS Options"
-    bl_parent_id = "FILE_PT_operator"
-
-    @classmethod
-    def poll(cls, context):
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        return operator.bl_idname == "IMPORT_SCENE_OT_ghsmappm2"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
-
-        sfile = context.space_data
-        operator = sfile.active_operator
-
-        layout.prop(operator, "anim_method")
 
 
 def menu_func_import(self, context):
@@ -123,10 +104,7 @@ def menu_func_import(self, context):
     )
 
 
-classes = (
-    ImportGHSMAPPM2,
-    GHSMAPPM2_PT_import_options,
-)
+classes = (ImportGHSMAPPM2,)
 
 
 def register():
