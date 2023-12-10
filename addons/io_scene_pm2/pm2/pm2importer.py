@@ -52,9 +52,9 @@ class Pm2Importer:
                 for i in range(len(prim) - 2):
                     oi = face_offset + i
                     if i % 2 == 0:
-                        tri = (oi, oi + 1, oi + 2)
-                    else:  # reverse winding of odd-numbered triangles
                         tri = (oi + 1, oi, oi + 2)
+                    else:  # reverse winding of odd-numbered triangles
+                        tri = (oi, oi + 1, oi + 2)
                     faces.append(tri)
                 face_offset += len(prim)
         me.from_pydata(vertices, [], faces)
@@ -63,7 +63,8 @@ class Pm2Importer:
         normals = []
         for primlist in self.pm2model.primlists:
             for prim in primlist:
-                normals.extend(prim.normals)
+                prim_normals = (-Vector(n) for n in prim.normals)
+                normals.extend(prim_normals)
         me.normals_split_custom_set_from_vertices(normals)
         me.use_auto_smooth = True
 
