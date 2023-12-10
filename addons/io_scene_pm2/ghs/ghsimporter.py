@@ -146,7 +146,9 @@ class GhsImporter:
             pm2idx = bodypart["pm2"]
             if pm2idx is None:  # there is no default pm2 for this bone
                 continue
-            if pm2idx < 0:  # negative pm2idx is specially handled by the game engine
+            if pm2idx < 0:
+                #  negative overwriting pm2idxs are presumably
+                # specially handled by the game engine or ignored
                 print(f"skipping default pm2idx {pm2idx} on bone {boneidx}")
                 continue
             pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
@@ -536,8 +538,8 @@ class GhsImporter:
                             pm2meshobj = pm2idx_to_meshobj[pm2idx]
                         else:
                             if pm2idx < 0:
-                                # no known cases, but negative overwriting pm2idxs would
-                                # presumably be specially handled by the game engine
+                                # negative overwriting pm2idxs are presumably
+                                # specially handled by the game engine or ignored
                                 print(
                                     f"skipping overwriting pm2idx {pm2idx} "
                                     f"on bone {boneidx}"
