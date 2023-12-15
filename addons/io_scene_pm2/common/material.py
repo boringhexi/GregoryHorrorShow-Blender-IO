@@ -1,6 +1,7 @@
 from collections import namedtuple
 from glob import glob
 from pathlib import Path
+from typing import Optional
 
 import bpy
 from bpy.types import Material
@@ -9,14 +10,17 @@ from bpy.types import Material
 MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided"))
 
 
-def import_materials(matsettings_materials: dict[MatSettings, Material], texdir: Path):
+def import_materials(
+    matsettings_materials: dict[MatSettings, Material], texdir: Optional[Path] = None
+):
     # create a mapping to use later
     texoffset_texpaths = dict()
-    for texpath in glob(str(texdir / "*.png")):
-        texpath = Path(texpath)
-        texoffset = texpath.name[6:-4]
-        texoffset_truncated = texoffset[-3:]
-        texoffset_texpaths[texoffset_truncated] = texpath
+    if texdir is not None:
+        for texpath in glob(str(texdir / "*.png")):
+            texpath = Path(texpath)
+            texoffset = texpath.name[6:-4]
+            texoffset_truncated = texoffset[-3:]
+            texoffset_texpaths[texoffset_truncated] = texpath
 
     # iterate through all materials
     for matsettings, mat in matsettings_materials.items():
@@ -24,7 +28,6 @@ def import_materials(matsettings_materials: dict[MatSettings, Material], texdir:
         texpath = texoffset_texpaths.get(texoffset)
         if texpath is None:
             print(f"Could not import texture for texoffset {texoffset!r}")
-            continue
 
         # set some material settings
         mat.use_backface_culling = not doublesided
@@ -51,5 +54,6 @@ def import_materials(matsettings_materials: dict[MatSettings, Material], texdir:
         mat.node_tree.links.new(teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"])
 
         # load texture file into Image Texture node
-        image = bpy.data.images.load(str(texpath), check_existing=True)
-        teximgnode.image = image
+        if texpath is not None:
+            image = bpy.data.images.load(str(texpath), check_existing=True)
+            teximgnode.image = image

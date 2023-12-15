@@ -1,15 +1,14 @@
 import os.path
 
 from .common.findimportdirs import find_ghs_import_dirs, find_mappm2_tex_dir
+from .common.material import import_materials
 from .ghs.ghsimporter import GhsImporter
 from .mappm2.mappm2importer import MapPm2Importer
 from .pm2.pm2importer import Pm2Importer
 from .pm2.pm2model import Pm2Model
 
 
-def load_ghs_mappm2(
-    context, *, filepath, files, ghs_anim_method="DRIVER"
-):
+def load_ghs_mappm2(context, *, filepath, files, ghs_anim_method="DRIVER"):
     dirname = os.path.dirname(filepath)
     for file in files:
         filepath = os.path.join(dirname, file.name)
@@ -30,8 +29,14 @@ def load_ghs_mappm2(
             with open(filepath, "rb") as fp:
                 pm2model = Pm2Model.from_file(fp)
                 bl_name = os.path.splitext(file.name)[0]
-                pm2importer = Pm2Importer(pm2model, bl_name=bl_name)
+                matsettings_materials = dict()
+                pm2importer = Pm2Importer(
+                    pm2model,
+                    bl_name=bl_name,
+                    matsettings_materials_to_reuse=matsettings_materials,
+                )
                 pm2importer.import_scene()
+                import_materials(matsettings_materials, None)
                 del pm2model, pm2importer
         else:
             pass
