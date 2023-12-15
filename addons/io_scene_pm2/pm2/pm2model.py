@@ -138,11 +138,15 @@ class PrimList(list[Prim]):
     texture_offset: Gregory Horror Show textures contain a texture offset "hint" that
     is used to place the texture in memory. This PrimList's texture_offset is the same
     as that hint, so it can be used to determine which texture to apply.
+
+    doublesided: Whether this primlist should be rendered from both sides (if False,
+    use backface culling)
     """
 
-    def __init__(self, texture_offset: int):
+    def __init__(self, texture_offset: int, doublesided: bool = False):
         super().__init__()
         self.texture_offset = texture_offset
+        self.doublesided = doublesided
 
 
 class Pm2Model:
@@ -197,8 +201,8 @@ class Pm2Model:
 
             # ...And then we parse the current contents of VU memory to get a PrimList.
             vu_memory.seek(0)
-            (texture_offset,) = _read_primlist_header(vu_memory)
-            primlist = PrimList(texture_offset=texture_offset)
+            (texture_offset, doublesided) = _read_primlist_header(vu_memory)
+            primlist = PrimList(texture_offset=texture_offset, doublesided=doublesided)
             if pm2type in (PM2TYPES["SINT32"], PM2TYPES["SINT32_ANIM"]):
                 datatype = "sint32"
             else:  # "FLOAT32" / "FLOAT32_ANIM"
@@ -225,9 +229,11 @@ def _read_vif_command(file: BinaryIO) -> Tuple[int, int, int]:
 def _read_primlist_header(file: BinaryIO):
     """read and return a PrimList header from file
 
-    :return: tuple (texture_offset,)
+    :return: tuple (texture_offset, doublesided)
     """
-    return unpack("4x4x4x4x1H2x4x4x4x", read_unless_eof(file, 0x20))
+    texture_offset, flags = unpack("4x4x4x4x1H2x4x4x1H2x", read_unless_eof(file, 0x20))
+    doublesided = bool(flags & 4)
+    return texture_offset, doublesided
 
 
 def _read_prim_header(file: BinaryIO):
