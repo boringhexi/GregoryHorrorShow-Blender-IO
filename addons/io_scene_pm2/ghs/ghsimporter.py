@@ -8,7 +8,7 @@ import bpy
 from bpy.types import Action, Armature, FCurve, Material, Mesh, Object
 from mathutils import Euler, Vector
 
-from ..common.texture import import_textures
+from ..common.material import import_materials
 from ..pm2.pm2importer import Pm2Importer
 from ..pm2.pm2model import Pm2Model
 from .meshposrot import mpr_from_file
@@ -775,7 +775,7 @@ class GhsImporter:
                 bpy.data.meshes.remove(default_pm2mesh)
 
         # import textures
-        import_textures(self._texoffset_materials_to_reuse, self.texdir)
+        import_materials(self._texoffset_materials_to_reuse, self.texdir)
 
     def set_default_scalehide_bones_visibility(
         self,

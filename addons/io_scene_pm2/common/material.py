@@ -5,7 +5,7 @@ import bpy
 from bpy.types import Material
 
 
-def import_textures(texoffset_materials: dict[str, Material], texdir: Path):
+def import_materials(texoffset_materials: dict[str, Material], texdir: Path):
     # create a mapping to use later
     texoffset_texpaths = dict()
     for texpath in glob(str(texdir / "*.png")):
