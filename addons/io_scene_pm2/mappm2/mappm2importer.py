@@ -3,7 +3,7 @@ from pathlib import Path
 import bpy
 from bpy.types import Material
 
-from ..common.material import import_materials
+from ..common.material import MatSettings, import_materials
 from ..pm2.pm2importer import Pm2Importer
 from ..pm2.pm2model import Pm2Model
 from .mappm2container import MapPm2Container
@@ -19,7 +19,7 @@ class MapPm2Importer:
         self.mappm2path = Path(mappm2path)
         self.texdir = texdir
         self.bl_name = bl_name
-        self._texoffset_materials_to_reuse: dict[str, Material] = dict()
+        self._matsettings_materials_to_reuse: dict[MatSettings, Material] = dict()
 
     def import_mappm2(self):
         with open(self.mappm2path, "rb") as file:
@@ -42,9 +42,9 @@ class MapPm2Importer:
             pm2importer = Pm2Importer(
                 pm2model,
                 bl_name=f"{self.bl_name}_{i:03}",
-                texoffset_materials_to_reuse=self._texoffset_materials_to_reuse,
+                matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
 
         # import textures
-        import_materials(self._texoffset_materials_to_reuse, self.texdir)
+        import_materials(self._matsettings_materials_to_reuse, self.texdir)

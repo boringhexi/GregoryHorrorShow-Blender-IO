@@ -1,3 +1,4 @@
+from collections import namedtuple
 from glob import glob
 from pathlib import Path
 
@@ -5,7 +6,10 @@ import bpy
 from bpy.types import Material
 
 
-def import_materials(texoffset_materials: dict[str, Material], texdir: Path):
+MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided"))
+
+
+def import_materials(matsettings_materials: dict[MatSettings, Material], texdir: Path):
     # create a mapping to use later
     texoffset_texpaths = dict()
     for texpath in glob(str(texdir / "*.png")):
@@ -15,14 +19,15 @@ def import_materials(texoffset_materials: dict[str, Material], texdir: Path):
         texoffset_texpaths[texoffset_truncated] = texpath
 
     # iterate through all materials
-    for texoffset, mat in texoffset_materials.items():
+    for matsettings, mat in matsettings_materials.items():
+        texoffset, doublesided = matsettings
         texpath = texoffset_texpaths.get(texoffset)
         if texpath is None:
             print(f"Could not import texture for texoffset {texoffset!r}")
             continue
 
         # set some material settings
-        mat.use_backface_culling = True
+        mat.use_backface_culling = not doublesided
         mat.blend_method = "BLEND"
         mat.show_transparent_back = False
         mat.use_nodes = True

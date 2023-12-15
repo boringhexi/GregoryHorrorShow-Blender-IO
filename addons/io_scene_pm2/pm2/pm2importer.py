@@ -5,6 +5,7 @@ from bpy.types import Material
 from bpy_extras.io_utils import unpack_list
 from mathutils import Vector
 
+from ..common.material import MatSettings
 from .pm2model import AnimatedPrim, Pm2Model
 
 
@@ -13,7 +14,7 @@ class Pm2Importer:
         self,
         pm2model: Pm2Model,
         bl_name="",
-        texoffset_materials_to_reuse: Optional[dict[str, Material]] = None,
+        matsettings_materials_to_reuse: Optional[dict[MatSettings, Material]] = None,
     ):
         """imports a PM2 model, including any vertex animation
 
@@ -22,14 +23,14 @@ class Pm2Importer:
 
         :param pm2model: pm2 model to import
         :param bl_name: what to name this mesh in Blender. Also used to name materials
-        :param texoffset_materials_to_reuse: if provided, a mapping of texoffsets to
+        :param matsettings_materials_to_reuse: if provided, a mapping of MatSettings to
             Blender materials. The import process will reuse an existing material if
-            its texoffset is encountered, and the mapping will be updated with any new
+            its MatSettings is encountered, and the mapping will be updated with any new
             materials created during the import process.
         """
         self.pm2model = pm2model
         self.bl_name = bl_name
-        self._texoffset_materials_to_reuse = texoffset_materials_to_reuse
+        self._matsettings_materials_to_reuse = matsettings_materials_to_reuse
 
         self._bpycollection = bpy.context.collection
         self.bl_meshobj = None
@@ -94,34 +95,37 @@ class Pm2Importer:
     def create_and_assign_materials(self):
         me = self.bl_meshobj.data
 
-        tex_offset_to_material_index = dict()
+        matsettings_to_material_index = dict()
         mat_index = 0
-        encountered_tex_offsets = set()
+        encountered_matsettings = set()
         for primlist in self.pm2model.primlists:
             texoffset_hex_truncated = f"{primlist.texture_offset:04x}"[1:]
-            if texoffset_hex_truncated not in encountered_tex_offsets:
-                # map tex_offset to index of the soon-to-be-created new material
-                tex_offset_to_material_index[texoffset_hex_truncated] = mat_index
+            doublesided = primlist.doublesided
+            this_matsettings = MatSettings(texoffset_hex_truncated, doublesided)
+            if this_matsettings not in encountered_matsettings:
+                # map this_matsettings to index of the soon-to-be-created new material
+                matsettings_to_material_index[this_matsettings] = mat_index
                 # create a new material
-                # (or introduce a new material from self._texoffset_materials_to_reuse)
+                # (or use an existing one from self._matsettings_materials_to_reuse)
                 if (
-                    self._texoffset_materials_to_reuse is not None
-                    and texoffset_hex_truncated in self._texoffset_materials_to_reuse
+                    self._matsettings_materials_to_reuse is not None
+                    and this_matsettings in self._matsettings_materials_to_reuse
                 ):
-                    mat = self._texoffset_materials_to_reuse[texoffset_hex_truncated]
+                    mat = self._matsettings_materials_to_reuse[this_matsettings]
                 else:
-                    matname = f"{self.bl_name}_0x{texoffset_hex_truncated}"
+                    doublesided_name = "_ds" if doublesided else "_bc"
+                    matname = f"{self.bl_name}_0x{texoffset_hex_truncated}{doublesided_name}"
                     mat = bpy.data.materials.new(name=matname)
-                    if self._texoffset_materials_to_reuse is not None:
-                        self._texoffset_materials_to_reuse[
-                            texoffset_hex_truncated
+                    if self._matsettings_materials_to_reuse is not None:
+                        self._matsettings_materials_to_reuse[
+                            this_matsettings
                         ] = mat
                 me.materials.append(mat)
                 mat_index += 1
-                encountered_tex_offsets.add(texoffset_hex_truncated)
+                encountered_matsettings.add(this_matsettings)
 
-        # Map each PrimList (specifically, its vertex indices) to its texture_offset
-        primlist_vertidxs_to_truncated_texoffsets = dict()
+        # Map each PrimList (specifically, its vertex indices) to its matsettings
+        primlist_vertidxs_to_matsettings = dict()
         vertex_index_offset = 0
         for primlist in self.pm2model.primlists:
             primlist_vertidxs = []
@@ -129,9 +133,11 @@ class Pm2Importer:
                 prim_vertidxs = [vertex_index_offset + i for i in range(len(prim))]
                 primlist_vertidxs.extend(prim_vertidxs)
                 vertex_index_offset += len(prim)
-            primlist_vertidxs_to_truncated_texoffsets[
+            texoffset_hex_truncated = f"{primlist.texture_offset:04x}"[1:]
+            doublesided = primlist.doublesided
+            primlist_vertidxs_to_matsettings[
                 tuple(primlist_vertidxs)
-            ] = f"{primlist.texture_offset:04x}"[1:]
+            ] = MatSettings(texoffset_hex_truncated, doublesided)
 
         # Assign materials to Blender polygons
         for face in me.polygons:
@@ -139,11 +145,12 @@ class Pm2Importer:
             face_vertidxs = set(face.vertices)
             for (
                 primlist_vertidxs,
-                tex_offset,
-            ) in primlist_vertidxs_to_truncated_texoffsets.items():
+                this_matsettings,
+            ) in primlist_vertidxs_to_matsettings.items():
+                tex_offset, doublesided = this_matsettings
                 if face_vertidxs.issubset(primlist_vertidxs):
                     # the face is in this PrimList and therefore uses its texture
-                    material_index = tex_offset_to_material_index[tex_offset]
+                    material_index = matsettings_to_material_index[this_matsettings]
                     face.material_index = material_index
                     break
             else:
