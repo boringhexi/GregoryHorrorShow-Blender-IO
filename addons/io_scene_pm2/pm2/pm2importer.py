@@ -114,12 +114,12 @@ class Pm2Importer:
                     mat = self._matsettings_materials_to_reuse[this_matsettings]
                 else:
                     doublesided_name = "_ds" if doublesided else "_bc"
-                    matname = f"{self.bl_name}_0x{texoffset_hex_truncated}{doublesided_name}"
+                    matname = (
+                        f"{self.bl_name}_0x{texoffset_hex_truncated}{doublesided_name}"
+                    )
                     mat = bpy.data.materials.new(name=matname)
                     if self._matsettings_materials_to_reuse is not None:
-                        self._matsettings_materials_to_reuse[
-                            this_matsettings
-                        ] = mat
+                        self._matsettings_materials_to_reuse[this_matsettings] = mat
                 me.materials.append(mat)
                 mat_index += 1
                 encountered_matsettings.add(this_matsettings)
@@ -135,9 +135,9 @@ class Pm2Importer:
                 vertex_index_offset += len(prim)
             texoffset_hex_truncated = f"{primlist.texture_offset:04x}"[1:]
             doublesided = primlist.doublesided
-            primlist_vertidxs_to_matsettings[
-                tuple(primlist_vertidxs)
-            ] = MatSettings(texoffset_hex_truncated, doublesided)
+            primlist_vertidxs_to_matsettings[tuple(primlist_vertidxs)] = MatSettings(
+                texoffset_hex_truncated, doublesided
+            )
 
         # Assign materials to Blender polygons
         for face in me.polygons:

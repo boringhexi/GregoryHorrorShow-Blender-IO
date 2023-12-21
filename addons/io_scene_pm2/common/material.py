@@ -6,7 +6,6 @@ from typing import Optional
 import bpy
 from bpy.types import Material
 
-
 MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided"))
 
 

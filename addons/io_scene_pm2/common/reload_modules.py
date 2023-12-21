@@ -16,7 +16,8 @@ def reload_modules(*modules: str, pkg: str = __package__) -> None:
         (e.g. pass the special variable __package__ from your script).
         Can pass None for absolute imports
     """
-    from importlib import import_module, reload as reload_module
+    from importlib import import_module
+    from importlib import reload as reload_module
 
     for module in modules:
         reload_module(import_module(module, pkg))

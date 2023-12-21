@@ -83,7 +83,9 @@ def has_scale_keyframe_at_frame(armobj, scalehide_bonename, frame):
 
 
 class GhsImporter:
-    def __init__(self, ghspath, pm2dir, mprdir, texdir, bl_name="", anim_method="1LONG"):
+    def __init__(
+        self, ghspath, pm2dir, mprdir, texdir, bl_name="", anim_method="1LONG"
+    ):
         """
 
         :param ghspath:
