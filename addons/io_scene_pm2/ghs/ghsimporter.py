@@ -130,14 +130,22 @@ class GhsImporter:
         original_armobj = bpy.data.objects.new(original_armdata.name, original_armdata)
         bpy.context.collection.objects.link(original_armobj)
         bpy.context.view_layer.objects.active = original_armobj
-        # create edit bones, save mapping of boneidx to bone name
+
+        # create bones, set bone properties, and populate a mapping for later...
         boneidx_to_bonename = dict()
-        bpy.ops.object.mode_set(mode="EDIT")
-        for boneidx in range(len(boneparentinfo)):
+        for boneidx, boneparentdata in enumerate(boneparentinfo):
+            bpy.ops.object.mode_set(mode="EDIT")
             bpyeditbone = original_armdata.edit_bones.new(name=str(boneidx))
             bpyeditbone.tail = Vector((0, 1, 0))
             boneidx_to_bonename[boneidx] = bpyeditbone.name
-        # parent editbones using boneparentinfo and previously saved mapping
+            posebone_name = bpyeditbone.name
+            bpy.ops.object.mode_set(mode="POSE")
+            posebone = original_armobj.pose.bones[posebone_name]
+            posebone.location = Vector(
+                (boneparentdata["posx"], boneparentdata["posy"], boneparentdata["posz"])
+            )
+        # ...then parent bones using that previously created mapping.
+        bpy.ops.object.mode_set(mode="EDIT")
         for boneidx, boneparentdata in enumerate(boneparentinfo):
             parentidx = boneparentdata["parent"]
             if parentidx is None:
