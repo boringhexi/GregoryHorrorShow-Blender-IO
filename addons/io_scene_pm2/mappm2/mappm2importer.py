@@ -45,6 +45,8 @@ class MapPm2Importer:
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
+            # map-pm2 models are 4x too small compared to ghs
+            pm2importer.bl_meshobj.scale = (4, 4, 4)
 
         # import textures
         import_materials(self._matsettings_materials_to_reuse, self.texdir)
