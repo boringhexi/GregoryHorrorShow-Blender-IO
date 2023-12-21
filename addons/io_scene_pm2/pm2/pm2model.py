@@ -231,7 +231,7 @@ def _read_primlist_header(file: BinaryIO):
 
     :return: tuple (texture_offset, doublesided)
     """
-    texture_offset, flags = unpack("4x4x4x4x1H2x4x4x1H2x", read_unless_eof(file, 0x20))
+    texture_offset, flags = unpack("<4x4x4x4x1H2x4x4x1H2x", read_unless_eof(file, 0x20))
     doublesided = bool(flags & 4)
     return texture_offset, doublesided
 
@@ -241,7 +241,7 @@ def _read_prim_header(file: BinaryIO):
 
     :return: tuple (numverts, is_last_prim)
     """
-    numverts_and_flag = unpack("1I4x4x4x", read_unless_eof(file, 0x10))[0]
+    numverts_and_flag = unpack("<1I4x4x4x", read_unless_eof(file, 0x10))[0]
     numverts = numverts_and_flag & 0x7FFF
     is_last_prim = numverts_and_flag & 0x8000
     return numverts, is_last_prim
