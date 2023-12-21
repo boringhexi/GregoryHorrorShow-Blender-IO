@@ -430,7 +430,7 @@ class GhsImporter:
                         bone.name for bone in armobj.data.bones
                     ]:
                         bpy.ops.object.mode_set(mode="EDIT")
-                        if pm2idx is not None:
+                        if pm2idx is not None and pm2idx >= 0:
                             scalehide_editbone_name = f"b{boneidx}_p{pm2idx:03x}_hide"
                             scalehide_editbone = armobj.data.edit_bones.new(
                                 name=scalehide_editbone_name
@@ -453,7 +453,7 @@ class GhsImporter:
                         scalehide_bonename = scalehide_editbone.name
                         # save this new scalehide bone to be retrieved later unless it's
                         # a DELETEME bone, in which case we want a new one each time
-                        if pm2idx is not None:
+                        if pm2idx is not None and pm2idx >= 0:
                             pm2idx_to_scalehidebone[pm2idx] = scalehide_bonename
                         repeated_bone = False
                     animidx_to_scalehide_bones[animidx].append(scalehide_bonename)
