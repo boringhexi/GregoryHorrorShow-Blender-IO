@@ -14,6 +14,19 @@ from ..pm2.pm2model import Pm2Model
 from .meshposrot import mpr_from_file
 
 
+def any_nonempty_anims(anims: list[dict]):
+    """check if this ghs anim list has any actual animations/keyframes in it"""
+    for anim in anims:
+        if not anim:
+            continue
+        if "animation_data" not in anim:
+            continue
+        if not any(anim["animation_data"]):
+            continue
+        return True
+    return False
+
+
 def set_action_interpolation(bpyaction: Action):
     """set all pos/rot to LINEAR (but preserves CONSTANT) and all scale to CONSTANT"""
     for fcurve in bpyaction.fcurves:
@@ -161,31 +174,43 @@ class GhsImporter:
             )
             pm2importer.import_scene()
             pm2meshobj = pm2importer.bl_meshobj
-            # create scalehide bone for this default body mesh
-            bpy.ops.object.mode_set(mode="EDIT")
-            scalehide_editbone = original_armobj.data.edit_bones.new(
-                name=f"b{boneidx}_p{pm2idx:03x}_hide"
-            )
-            scalehide_editbone.head = (0, 0, 0)
-            scalehide_editbone.tail = (0, 1, 0)
-            parent_bonename = boneidx_to_bonename[boneidx]
-            parent_editbone = original_armobj.data.edit_bones[parent_bonename]
-            scalehide_editbone.parent = parent_editbone
-            scalehide_bonename = scalehide_editbone.name
-            pm2idx_to_scalehidebone[pm2idx] = scalehide_bonename
-            # and parent that mesh to the scalehide bone
-            bpy.ops.object.mode_set(mode="POSE")
-            pm2meshobj.parent = original_armobj
-            pm2meshobj.parent_type = "BONE"
-            pm2meshobj.parent_bone = scalehide_bonename
-            pm2meshobj.location[1] = -1
-            boneidx_to_default_scalehide_bonename[boneidx] = scalehide_bonename
-            default_scalehide_bonename_to_pm2mesh[scalehide_bonename] = pm2meshobj.data
 
-            pm2idx_to_meshobj[pm2idx] = pm2meshobj
-            original_default_pm2mesh_to_scalehide_bonename[
-                pm2meshobj.data
-            ] = scalehide_bonename
+            if any_nonempty_anims(anims):
+                # create scalehide bone for this default body mesh
+                bpy.ops.object.mode_set(mode="EDIT")
+                scalehide_editbone = original_armobj.data.edit_bones.new(
+                    name=f"b{boneidx}_p{pm2idx:03x}_hide"
+                )
+                scalehide_editbone.head = (0, 0, 0)
+                scalehide_editbone.tail = (0, 1, 0)
+                parent_bonename = boneidx_to_bonename[boneidx]
+                parent_editbone = original_armobj.data.edit_bones[parent_bonename]
+                scalehide_editbone.parent = parent_editbone
+                scalehide_bonename = scalehide_editbone.name
+                pm2idx_to_scalehidebone[pm2idx] = scalehide_bonename
+                # and parent that mesh to the scalehide bone
+                bpy.ops.object.mode_set(mode="POSE")
+                pm2meshobj.parent = original_armobj
+                pm2meshobj.parent_type = "BONE"
+                pm2meshobj.parent_bone = scalehide_bonename
+                pm2meshobj.location[1] = -1
+                boneidx_to_default_scalehide_bonename[boneidx] = scalehide_bonename
+                default_scalehide_bonename_to_pm2mesh[
+                    scalehide_bonename
+                ] = pm2meshobj.data
+
+                pm2idx_to_meshobj[pm2idx] = pm2meshobj
+                original_default_pm2mesh_to_scalehide_bonename[
+                    pm2meshobj.data
+                ] = scalehide_bonename
+            else:
+                # don't parent to a scalehide bone, parent directly to the boneidx bone
+                bpy.ops.object.mode_set(mode="POSE")
+                parent_bonename = boneidx_to_bonename[boneidx]
+                pm2meshobj.parent = original_armobj
+                pm2meshobj.parent_type = "BONE"
+                pm2meshobj.parent_bone = parent_bonename
+                pm2meshobj.location[1] = -1
         bpy.ops.object.mode_set(mode="OBJECT")
 
         if self.anim_method in ("DRIVER", "1LONG", "1LONG_EVERY100"):
