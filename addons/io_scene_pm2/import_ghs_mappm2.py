@@ -1,4 +1,5 @@
 import os.path
+from math import radians
 
 from .common.findimportdirs import find_ghs_import_dirs, find_mappm2_tex_dir
 from .common.material import import_materials
@@ -37,6 +38,9 @@ def load_ghs_mappm2(context, *, filepath, files, ghs_anim_method="DRIVER"):
                 )
                 pm2importer.import_scene()
                 import_materials(matsettings_materials, None)
+                # also need to be rotated to correct axes
+                pm2meshobj = pm2importer.bl_meshobj
+                pm2meshobj.rotation_euler = (radians(90), radians(180), 0)
                 del pm2model, pm2importer
         else:
             pass

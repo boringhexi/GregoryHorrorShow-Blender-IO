@@ -1,3 +1,4 @@
+from math import radians
 from pathlib import Path
 
 import bpy
@@ -46,7 +47,10 @@ class MapPm2Importer:
             )
             pm2importer.import_scene()
             # map-pm2 models are 4x too small compared to ghs
-            pm2importer.bl_meshobj.scale = (4, 4, 4)
+            pm2meshobj = pm2importer.bl_meshobj
+            pm2meshobj.scale = (4, 4, 4)
+            # also need to be rotated to correct axes
+            pm2meshobj.rotation_euler = (radians(90), radians(180), 0)
 
         # import textures
         import_materials(self._matsettings_materials_to_reuse, self.texdir)

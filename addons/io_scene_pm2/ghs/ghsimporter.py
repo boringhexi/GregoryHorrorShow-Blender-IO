@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 from itertools import chain
+from math import radians
 from pathlib import Path
 from typing import Optional
 
@@ -132,6 +133,8 @@ class GhsImporter:
         original_armobj = bpy.data.objects.new(original_armdata.name, original_armdata)
         bpy.context.collection.objects.link(original_armobj)
         bpy.context.view_layer.objects.active = original_armobj
+        # rotate it to correct the axes
+        original_armobj.rotation_euler = (radians(90), radians(180), 0)
 
         # create bones, set bone properties, and populate a mapping for later...
         boneidx_to_bonename = dict()
