@@ -147,7 +147,11 @@ class GhsImporter:
             bpy.ops.object.mode_set(mode="POSE")
             posebone = original_armobj.pose.bones[posebone_name]
             posebone.location = Vector(
-                (boneparentdata["posx"], boneparentdata["posy"], boneparentdata["posz"])
+                (
+                    boneparentdata["posx"],
+                    -boneparentdata["posy"],
+                    boneparentdata["posz"],
+                )
             )
         # ...then parent bones using that previously created mapping.
         bpy.ops.object.mode_set(mode="EDIT")
