@@ -274,6 +274,8 @@ class GhsImporter:
                 armobj = bpy.data.objects.new(armdata.name, armdata)
                 collection.objects.link(armobj)
                 bpy.context.view_layer.objects.active = armobj
+                # rotate it to correct the axes
+                armobj.rotation_euler = (radians(90), radians(180), 0)
 
                 # reset this mapping, don't want to reuse non-default pm2 meshes between
                 # animations
