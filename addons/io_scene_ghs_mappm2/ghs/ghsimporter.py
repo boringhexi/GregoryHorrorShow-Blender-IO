@@ -108,6 +108,7 @@ class GhsImporter:
             "1LONG_EVERY100",
             "DRIVER",
             "SEPARATE_ARMATURES",
+            "TPOSE",
         ):
             raise ValueError(f"Unknown anim_method {anim_method!r}")
         self.anim_method = anim_method
@@ -192,7 +193,7 @@ class GhsImporter:
             pm2importer.import_scene()
             pm2meshobj = pm2importer.bl_meshobj
 
-            if any_nonempty_anims(anims):
+            if any_nonempty_anims(anims) and self.anim_method != "TPOSE":
                 # create scalehide bone for this default body mesh
                 bpy.ops.object.mode_set(mode="EDIT")
                 scalehide_editbone = original_armobj.data.edit_bones.new(
@@ -230,7 +231,7 @@ class GhsImporter:
                 pm2meshobj.location[1] = -1
         bpy.ops.object.mode_set(mode="OBJECT")
 
-        if self.anim_method in ("DRIVER", "1LONG", "1LONG_EVERY100"):
+        if self.anim_method in ("DRIVER", "1LONG", "1LONG_EVERY100", "TPOSE"):
             armobj = original_armobj
         else:  # elif self.anim_method = "SEPARATE_ARMATURES"
             armobj = None
@@ -313,35 +314,57 @@ class GhsImporter:
                 if armobj.animation_data is not None:
                     armobj.animation_data.action = None
 
-            # animate armature using mpr
-            bpy.ops.object.mode_set(mode="POSE")
-            # iterate through mpr bones, position pose bones
-            for boneidx, boneposedata in mpr.items():
-                bpybonename = boneidx_to_bonename[boneidx]
-                bpyposebone = armobj.pose.bones[bpybonename]
-                bpyposebone.rotation_mode = "ZXY"  # pretty sure it's this and not ZYX
-                num_frames = len(boneposedata["pos"])
-                for frame in range(num_frames):
-                    pos_raw = boneposedata["pos"][frame]
-                    pos = Vector(pos_raw)
-                    rot_raw = boneposedata["rot"][frame]
-                    rot = Euler(rot_raw)
-                    bpyposebone.location = pos
-                    bpyposebone.rotation_euler = rot
-                    bpyposebone.keyframe_insert("location", frame=frame_offset + frame)
-                    bpyposebone.keyframe_insert(
-                        "rotation_euler", frame=frame_offset + frame
+            if self.anim_method == "TPOSE":
+                # pose armature using 1st frame of 1st mpr
+                bpy.ops.object.mode_set(mode="POSE")
+                for boneidx, boneposedata in mpr.items():
+                    bpybonename = boneidx_to_bonename[boneidx]
+                    bpyposebone = armobj.pose.bones[bpybonename]
+                    bpyposebone.rotation_mode = (
+                        "ZXY"  # pretty sure it's this and not ZYX
                     )
-                    if frame == 0 and armobj.animation_data is not None:
-                        # set this and future keyframes to LINEAR interpolation
-                        bpyaction: Action = armobj.animation_data.action
-                        set_action_1frame_interpolation(
-                            bpyaction,
-                            -1,
-                            ("location", "rotation_euler"),
-                            "LINEAR",
-                            posebone=bpyposebone.name,
+                    num_frames = len(boneposedata["pos"])
+                    for frame in range(num_frames):
+                        pos_raw = boneposedata["pos"][frame]
+                        pos = Vector(pos_raw)
+                        bpyposebone.location = pos
+                        # For our approximated T-pose, no rest pose rotation
+                        break
+                break
+            else:
+                # animate armature using mpr
+                bpy.ops.object.mode_set(mode="POSE")
+                # iterate through mpr bones, position pose bones
+                for boneidx, boneposedata in mpr.items():
+                    bpybonename = boneidx_to_bonename[boneidx]
+                    bpyposebone = armobj.pose.bones[bpybonename]
+                    bpyposebone.rotation_mode = (
+                        "ZXY"  # pretty sure it's this and not ZYX
+                    )
+                    num_frames = len(boneposedata["pos"])
+                    for frame in range(num_frames):
+                        pos_raw = boneposedata["pos"][frame]
+                        pos = Vector(pos_raw)
+                        rot_raw = boneposedata["rot"][frame]
+                        rot = Euler(rot_raw)
+                        bpyposebone.location = pos
+                        bpyposebone.rotation_euler = rot
+                        bpyposebone.keyframe_insert(
+                            "location", frame=frame_offset + frame
                         )
+                        bpyposebone.keyframe_insert(
+                            "rotation_euler", frame=frame_offset + frame
+                        )
+                        if frame == 0 and armobj.animation_data is not None:
+                            # set this and future keyframes to LINEAR interpolation
+                            bpyaction: Action = armobj.animation_data.action
+                            set_action_1frame_interpolation(
+                                bpyaction,
+                                -1,
+                                ("location", "rotation_euler"),
+                                "LINEAR",
+                                posebone=bpyposebone.name,
+                            )
             if (
                 self.anim_method in ("1LONG", "1LONG_EVERY100")
                 and armobj.animation_data is not None
@@ -392,6 +415,9 @@ class GhsImporter:
                 )
 
             for boneidx, keyframes in enumerate(anim["animation_data"]):
+                if self.anim_method == "TPOSE":
+                    break
+
                 parent_bonename = boneidx_to_bonename[boneidx]
 
                 if not keyframes:

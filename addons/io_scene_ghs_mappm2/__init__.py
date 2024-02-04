@@ -77,6 +77,13 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
                 "Creates a new armature for each animation. Suitable for exporting "
                 "each animation to a separate file",
             ),
+            (
+                "TPOSE",
+                "T-Pose approx",
+                "Approximates a good-enough T-Pose (by using only default model parts, "
+                "no animation, and no rest pose rotation)",
+            ),
+
         ],
         description="How .ghs animations should be imported",
         default="DRIVER",
