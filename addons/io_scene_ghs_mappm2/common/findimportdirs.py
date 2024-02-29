@@ -14,9 +14,12 @@ def find_ghs_import_dirs(ghs_path):
     ghs_dir = ghs_path.parent
 
     # case 1: start in texdir, increment texdir to get a base dir then descend into 0
-    #   for pm2 and 2 for mpr
+    #   for pm2 and 2 for mpr (e.g. 0aa characters)
+    # case 1b: start in texdir, increment texdir to get pm2dir (e.g. 03c figurines)
     # case 2: start in a base dir, descend into 0 for tex, 1 for pm2, and 2 for mpr
+    #   (e.g. 029 held objects)
     # case 3: start in a base dir, descend into 1 for tex and 2 for pm2 (no mpr)
+    #   (e.g. 028 doors)
 
     try:
         thisdirnum = int(ghs_dir.name[:3], 16)
@@ -27,9 +30,14 @@ def find_ghs_import_dirs(ghs_path):
     if list(ghs_dir.glob("*.png")):
         texdir = ghs_dir
         basedir = ghs_dir.parent / f"{thisdirnum + 1:03x}.sli.stm"
-        pm2dir = basedir / "000.stm"
-        mprdir = basedir / "002.stm"
-        if not mprdir.is_dir or not list(mprdir.glob("*.mpr")):
+        if basedir.is_dir():
+            pm2dir = basedir / "000.stm"
+            mprdir = basedir / "002.stm"
+            if not mprdir.is_dir or not list(mprdir.glob("*.mpr")):
+                mprdir = None
+        else:
+            # case 1b
+            pm2dir = ghs_dir.parent / f"{thisdirnum + 1:03x}.stm"
             mprdir = None
 
     else:
@@ -47,6 +55,8 @@ def find_ghs_import_dirs(ghs_path):
             pm2dir = basedir / "002.sli.stm"
             mprdir = None
 
+    print(texdir)
+    print(pm2dir)
     if not list(texdir.glob("*.png")) or not list(pm2dir.glob("*.pm2")):
         raise ImportDirsNotFoundError()
     if mprdir is not None and not list(mprdir.glob("*.mpr")):
