@@ -55,8 +55,6 @@ def find_ghs_import_dirs(ghs_path):
             pm2dir = basedir / "002.sli.stm"
             mprdir = None
 
-    print(texdir)
-    print(pm2dir)
     if not list(texdir.glob("*.png")) or not list(pm2dir.glob("*.pm2")):
         raise ImportDirsNotFoundError()
     if mprdir is not None and not list(mprdir.glob("*.mpr")):
