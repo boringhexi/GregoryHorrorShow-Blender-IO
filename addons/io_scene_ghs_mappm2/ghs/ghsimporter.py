@@ -180,14 +180,14 @@ class GhsImporter:
             if pm2idx < 0:
                 #  negative overwriting pm2idxs are presumably
                 # specially handled by the game engine or ignored
-                print(f"skipping default pm2idx {pm2idx} on bone {boneidx}")
+                print(f"skipping default pm2idx {pm2idx:03x} on bone {boneidx:02}")
                 continue
             pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
             with open(pm2path, "rb") as fp:
                 pm2model = Pm2Model.from_file(fp)
             pm2importer = Pm2Importer(
                 pm2model,
-                bl_name=f"b{boneidx}_p{pm2idx:03x}",
+                bl_name=f"b{boneidx:02}_p{pm2idx:03x}",
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
@@ -197,7 +197,7 @@ class GhsImporter:
                 # create scalehide bone for this default body mesh
                 bpy.ops.object.mode_set(mode="EDIT")
                 scalehide_editbone = original_armobj.data.edit_bones.new(
-                    name=f"b{boneidx}_p{pm2idx:03x}_hide"
+                    name=f"b{boneidx:02}_p{pm2idx:03x}_hide"
                 )
                 scalehide_editbone.head = (0, 0, 0)
                 scalehide_editbone.tail = (0, 1, 0)
@@ -274,7 +274,7 @@ class GhsImporter:
 
             if self.anim_method == "SEPARATE_ARMATURES":
                 # create new collection
-                collection_name = f"{self.bl_name}_anim{animidx}"
+                collection_name = f"{self.bl_name}_anim{animidx:02}"
                 collection = bpy.data.collections.new(collection_name)
                 collection_name = collection.name
                 bpy.context.scene.collection.children.link(collection)
@@ -286,7 +286,7 @@ class GhsImporter:
 
                 # copy existing armature to use as a base
                 armdata = original_armdata.copy()
-                armdata.name = f"{self.bl_name}_a{animidx}_arm"
+                armdata.name = f"{self.bl_name}_a{animidx:02}_arm"
                 armobj = bpy.data.objects.new(armdata.name, armdata)
                 collection.objects.link(armobj)
                 bpy.context.view_layer.objects.active = armobj
@@ -307,7 +307,7 @@ class GhsImporter:
                     meshcopy = default_pm2mesh.copy()
                     bboneidx, pm2suffix = meshcopy.name.split("_")
                     pm2idx = int(pm2suffix.split(".")[0][1:], 16)
-                    meshcopy.name = f"a{animidx}_{bboneidx}_p{pm2idx:03x}"
+                    meshcopy.name = f"a{animidx:02}_{bboneidx}_p{pm2idx:03x}"
                     pm2meshobj = bpy.data.objects.new(meshcopy.name, meshcopy)
                     collection.objects.link(pm2meshobj)
                     # skinning once again, weigh entire mesh to the scalehide bone
@@ -518,7 +518,9 @@ class GhsImporter:
                     ]:
                         bpy.ops.object.mode_set(mode="EDIT")
                         if pm2idx is not None and pm2idx >= 0:
-                            scalehide_editbone_name = f"b{boneidx}_p{pm2idx:03x}_hide"
+                            scalehide_editbone_name = (
+                                f"b{boneidx:02}_p{pm2idx:03x}_hide"
+                            )
                             scalehide_editbone = armobj.data.edit_bones.new(
                                 name=scalehide_editbone_name
                             )
@@ -526,9 +528,7 @@ class GhsImporter:
                             # no pm2 submesh is displayed this keyframe. We still place
                             # a scalehide bone for now to assist with calculating the
                             # visibility of the default pm2's scalehide bone later.
-                            scalehide_editbone_name = (
-                                f"a{animidx}_b{boneidx}_k{int(keyframe_start)}_DELETEME"
-                            )
+                            scalehide_editbone_name = f"a{animidx:02}_b{boneidx:02}_k{int(keyframe_start)}_DELETEME"
                             scalehide_editbone = armobj.data.edit_bones.new(
                                 name=scalehide_editbone_name
                             )
@@ -628,17 +628,17 @@ class GhsImporter:
                                 # negative overwriting pm2idxs are presumably
                                 # specially handled by the game engine or ignored
                                 print(
-                                    f"skipping overwriting pm2idx {pm2idx} "
-                                    f"on bone {boneidx}"
+                                    f"skipping overwriting pm2idx {pm2idx:03x} "
+                                    f"on bone {boneidx:02}"
                                 )
                                 continue
                             pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
                             with open(pm2path, "rb") as fp:
                                 pm2model = Pm2Model.from_file(fp)
                             if self.anim_method == "SEPARATE_ARMATURES":
-                                pm2name = f"a{animidx}_b{boneidx}_p{pm2idx:03x}"
+                                pm2name = f"a{animidx:02}_b{boneidx:02}_p{pm2idx:03x}"
                             else:
-                                pm2name = f"b{boneidx}_p{pm2idx:03x}"
+                                pm2name = f"b{boneidx:02}_p{pm2idx:03x}"
                             pm2importer = Pm2Importer(
                                 pm2model,
                                 bl_name=pm2name,
@@ -672,7 +672,7 @@ class GhsImporter:
                                     # Create and parent driver bone
                                     bpy.ops.object.mode_set(mode="EDIT")
                                     driver_editbone = armobj.data.edit_bones.new(
-                                        name=f"b{boneidx}_p{pm2idx:03x}_driver"
+                                        name=f"b{boneidx:02}_p{pm2idx:03x}_driver"
                                     )
                                     driver_editbone.head = (0, 0, 0)
                                     driver_editbone.tail = (0, 1, 0)
