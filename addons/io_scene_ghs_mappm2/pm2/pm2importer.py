@@ -180,3 +180,4 @@ class Pm2Importer:
         sk.interpolation = "KEY_LINEAR"
         for vertidx, posd in enumerate(blvertidxs_to_vertdeltas):
             sk.data[vertidx].co += posd
+        sk.id_data.name = self.bl_name  # otherwise they're all like "Key.001", etc
