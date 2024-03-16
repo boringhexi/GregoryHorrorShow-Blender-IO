@@ -180,7 +180,7 @@ class GhsImporter:
             if pm2idx < 0:
                 #  negative overwriting pm2idxs are presumably
                 # specially handled by the game engine or ignored
-                print(f"skipping default pm2idx {pm2idx:03x} on bone {boneidx:02}")
+                print(f"skipping default pm2idx {pm2idx} on bone {boneidx:02}")
                 continue
             pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
             with open(pm2path, "rb") as fp:
@@ -628,7 +628,7 @@ class GhsImporter:
                                 # negative overwriting pm2idxs are presumably
                                 # specially handled by the game engine or ignored
                                 print(
-                                    f"skipping overwriting pm2idx {pm2idx:03x} "
+                                    f"skipping overwriting pm2idx {pm2idx} "
                                     f"on bone {boneidx:02}"
                                 )
                                 continue
