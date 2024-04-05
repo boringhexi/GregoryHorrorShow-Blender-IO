@@ -9,8 +9,7 @@ import bpy
 from bpy.types import Action, Armature, FCurve, Material, Mesh, Object
 from mathutils import Euler, Vector
 
-from ..common.material import MatSettings, import_materials
-from ..pm2.pm2importer import Pm2Importer
+from ..pm2.pm2importer import MatSettings, Pm2Importer
 from ..pm2.pm2model import Pm2Model
 from .meshposrot import mpr_from_file
 
@@ -188,6 +187,7 @@ class GhsImporter:
             pm2importer = Pm2Importer(
                 pm2model,
                 bl_name=f"b{boneidx:02}_p{pm2idx:03x}",
+                texdir=self.texdir,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
@@ -642,6 +642,7 @@ class GhsImporter:
                             pm2importer = Pm2Importer(
                                 pm2model,
                                 bl_name=pm2name,
+                                texdir=self.texdir,
                                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
                             )
                             pm2importer.import_scene()
@@ -867,9 +868,6 @@ class GhsImporter:
             # same with the original default body part meshes
             for default_pm2mesh in original_default_pm2mesh_to_scalehide_bonename:
                 bpy.data.meshes.remove(default_pm2mesh)
-
-        # import textures
-        import_materials(self._matsettings_materials_to_reuse, self.texdir)
 
     def set_default_scalehide_bones_visibility(
         self,

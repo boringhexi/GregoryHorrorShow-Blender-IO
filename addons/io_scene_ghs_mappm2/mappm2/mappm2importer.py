@@ -4,8 +4,7 @@ from pathlib import Path
 import bpy
 from bpy.types import Material
 
-from ..common.material import MatSettings, import_materials
-from ..pm2.pm2importer import Pm2Importer
+from ..pm2.pm2importer import MatSettings, Pm2Importer
 from ..pm2.pm2model import Pm2Model
 from .mappm2container import MapPm2Container
 
@@ -43,6 +42,7 @@ class MapPm2Importer:
             pm2importer = Pm2Importer(
                 pm2model,
                 bl_name=f"{self.bl_name}_{i:03}",
+                texdir=self.texdir,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
@@ -51,6 +51,3 @@ class MapPm2Importer:
             pm2meshobj.scale = (4, 4, 4)
             # also need to be rotated to correct axes
             pm2meshobj.rotation_euler = (radians(90), radians(180), 0)
-
-        # import textures
-        import_materials(self._matsettings_materials_to_reuse, self.texdir)
