@@ -67,7 +67,8 @@ class Pm2Importer:
                 prim_normals = (-Vector(n) for n in prim.normals)
                 normals.extend(prim_normals)
         me.normals_split_custom_set_from_vertices(normals)
-        me.use_auto_smooth = True
+        if hasattr(me, "use_auto_smooth"):  # gone in Blender 4.1.0 onward
+            me.use_auto_smooth = True
 
         # add texcoords
         uv_layer = me.uv_layers.new()
