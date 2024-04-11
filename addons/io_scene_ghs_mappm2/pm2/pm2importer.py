@@ -1,8 +1,10 @@
 from collections import namedtuple
 from glob import glob
+from itertools import chain
+from math import ceil, floor
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 import bpy
 from bpy.types import Image, Material, ShaderNodeBsdfPrincipled
@@ -11,8 +13,12 @@ from mathutils import Vector
 
 from .pm2model import AnimatedPrim, Pm2Model, PrimList
 
+TRIFILL_DEBUG = False
 
-MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided", "transparent"))
+MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided", "blend_method"))
+# blend_method can be any Blender blend method, e.g. OPAQUE, CLIP, BLEND
+MyUV = namedtuple("MyUV", "x, y")
+TEXTURE_OPAQUE_CUTOFF = 0x7E / 128
 
 
 class Pm2Importer:
@@ -139,9 +145,9 @@ class Pm2Importer:
             primlist_texoffset_trunc = f"{primlist.texture_offset:04x}"[-3:]
             doublesided = primlist.doublesided
             teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
-            transparent = determine_primlist_transparency(primlist, teximage)
+            blend_method = determine_primlist_blend_method(primlist, teximage)
             this_matsettings = MatSettings(
-                primlist_texoffset_trunc, doublesided, transparent
+                primlist_texoffset_trunc, doublesided, blend_method
             )
             primlists_to_matsettings.append(this_matsettings)
 
@@ -165,9 +171,8 @@ class Pm2Importer:
 
                     # set some material settings
                     mat.use_backface_culling = not doublesided
-                    if transparent:
-                        mat.blend_method = "BLEND"
-                    # mat.show_transparent_back = False  # TODO
+                    mat.blend_method = blend_method
+                    mat.show_transparent_back = False
 
                     # set up the material nodes
                     mat.use_nodes = True
@@ -183,8 +188,8 @@ class Pm2Importer:
                         teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
                     )
                     # assign loaded texture to this Image Texture node
-                    image = self._texoffsets_to_images.get(primlist_texoffset_trunc)
-                    teximgnode.image = image
+                    teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
+                    teximgnode.image = teximage
 
                     if self._matsettings_materials_to_reuse is not None:
                         self._matsettings_materials_to_reuse[this_matsettings] = mat
@@ -259,10 +264,179 @@ def find_principled_bsdf_node(mat: Material) -> Optional[ShaderNodeBsdfPrinciple
     return pbsdfnode
 
 
-def determine_primlist_transparency(
+def determine_primlist_blend_method(
     primlist: PrimList, bpyimage: Optional[Image]
-) -> bool:
-    if bpyimage is None:
-        return False
+) -> str:
+    """return Blender blend_method to use for this primlist
 
-    return False  # TODO placeholder
+    return one of "OPAQUE", "CLIP", or "BLEND"
+    """
+    encountered_zero_alpha = False
+
+    # check vertex colors for transparency
+    for prim in primlist:
+        for r, g, b, alpha in prim.colors:
+            if 0 < alpha < 1.0:
+                return "BLEND"
+            elif alpha == 0:
+                encountered_zero_alpha = True
+
+    # return early if image is opaque or invalid
+    if bpyimage is None or bpyimage.channels < 4:
+        return "OPAQUE"
+    imgwidth, imgheight = bpyimage.size
+    if not (imgwidth and imgheight):
+        return "OPAQUE"
+
+    # check for any image transparency that is covered by primlist's UVs
+    for prim in primlist:
+        # remember, prims are trilists, we need to make them separate triangles
+        for i in range(len(prim) - 2):
+            tri_uvs = prim.texcoords[i : i + 3]
+            tri_uvs = [MyUV(uv[0], 1 - uv[1]) for uv in tri_uvs]
+            # sort points from top-left to bottom-right
+            tri_uvs.sort(key=lambda uv: (-uv.y, uv.x))
+            v1, v2, v3 = tri_uvs
+
+            if v1 == v2 == v3:
+                # UV triangle forms a point
+                tri_pixel_idxs = ((int(v1.x * imgwidth), int(v1.y * imgheight)),)
+            elif v1.y == v2.y == v3.y:
+                # UV triangles form a horizontal line
+                tri_pixel_idxs = horizontal_line_tri_pixel_idxs(
+                    v1, v2, v3, imgwidth, imgheight
+                )
+            elif v2.y == v3.y:
+                # UV triangle has flat bottom
+                tri_pixel_idxs = flat_bottom_tri_pixels_idxs(
+                    v1, v2, v3, imgwidth, imgheight
+                )
+            elif v1.y == v2.y:
+                # UV triangle has flat top
+                tri_pixel_idxs = flat_top_tri_pixels_idxs(
+                    v1, v2, v3, imgwidth, imgheight
+                )
+            else:
+                # split UV triangle into flat-bottom and flat-top triangles
+                v4x = v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x)
+                v4 = MyUV(v4x, v2.y)
+                if not v2.x <= v4.x:
+                    v2, v4 = v4, v2
+                flat_bottom_tri_pixel_idxs = flat_bottom_tri_pixels_idxs(
+                    v1, v2, v4, imgwidth, imgheight
+                )
+                flat_top_tri_pixel_idxs = flat_top_tri_pixels_idxs(
+                    v2, v4, v3, imgwidth, imgheight
+                )
+                tri_pixel_idxs = chain(
+                    flat_bottom_tri_pixel_idxs,
+                    flat_top_tri_pixel_idxs,
+                )
+
+            for x, y in tri_pixel_idxs:
+                if 0 <= x < imgwidth and 0 <= y < imgheight:
+                    pixel = y * imgwidth + x
+                    if TRIFILL_DEBUG:
+                        bpyimage.pixels[pixel * 4 : pixel * 4 + 4] = (1, 1, 1, 1)
+                    else:
+                        alpha = bpyimage.pixels[pixel * 4 + 3]
+                        if 0 < alpha < TEXTURE_OPAQUE_CUTOFF:
+                            return "BLEND"
+                        elif alpha == 0:
+                            encountered_zero_alpha = True
+
+    # if an alpha value requiring BLEND was encountered, this function will have already
+    # returned by now. That only leaves CLIP and OPAQUE
+    if encountered_zero_alpha:
+        return "CLIP"
+    return "OPAQUE"
+
+
+def horizontal_line_tri_pixel_idxs(
+    v1: MyUV, v2: MyUV, v3: MyUV, imgwidth: int, imgheight: int
+) -> Iterable[tuple[int, int]]:
+    """yield pixels from 3 points forming a horizontal line
+
+    prerequisites:
+    - v1.x <= v2.x <= v3.x
+    - v1.y == v2.y == v3.y
+    """
+    # change from float values to pixels
+    x1 = floor(v1.x * imgwidth)
+    x2 = ceil(v3.x * imgwidth)
+    y = int(v1.y * imgheight)
+    for x in range(x1, x2):
+        yield x, y
+
+
+def flat_bottom_tri_pixels_idxs(
+    v1: MyUV, v2: MyUV, v3: MyUV, imgwidth: int, imgheight: int
+) -> Iterable[tuple[int, int]]:
+    """yield points from 3 points forming a flat-bottom triangle
+
+    prerequisites:
+    - v1.y > v2.y == v3.y
+    - v2.x <= v3.x
+    -
+    """
+    # change from float values to pixels
+    v1 = MyUV(v1.x * imgwidth, v1.y * imgheight)
+    v2 = MyUV(v2.x * imgwidth, v2.y * imgheight)
+    v3 = MyUV(v3.x * imgwidth, v3.y * imgheight)
+
+    invslope1 = (v1.x - v2.x) / (v1.y - v2.y)
+    invslope2 = (v3.x - v1.x) / (v1.y - v3.y)
+
+    cury = v1.y
+    curx1 = curx2 = v1.x
+    while cury >= floor(v2.y):
+        curx = floor(curx1)
+        while curx <= ceil(curx2):
+            x, y = int(curx) % imgwidth, int(cury) % imgheight
+            yield x, y
+            curx += 1
+        if cury - 1 < v2.y:
+            factor = cury - v2.y
+            cury -= 1
+            curx1 -= invslope1 * factor
+            curx2 += invslope2 * factor
+        else:
+            cury -= 1
+            curx1 -= invslope1
+            curx2 += invslope2
+
+
+def flat_top_tri_pixels_idxs(
+    v1: MyUV, v2: MyUV, v3: MyUV, imgwidth: int, imgheight: int
+) -> Iterable[tuple[int, int]]:
+    """yield points from 3 points forming a flat-bottom triangle
+
+    prerequisites:
+    - v3.y < v1.y == v2.y
+    - v1.x <= v2.x
+    """
+    # change from float values to pixels
+    v1 = MyUV(v1.x * imgwidth, v1.y * imgheight)
+    v2 = MyUV(v2.x * imgwidth, v2.y * imgheight)
+    v3 = MyUV(v3.x * imgwidth, v3.y * imgheight)
+
+    invslope1 = (v3.x - v1.x) / (v1.y - v3.y)
+    invslope2 = (v2.x - v3.x) / (v2.y - v3.y)
+
+    cury = v3.y
+    curx1 = curx2 = v3.x
+    while cury <= ceil(v1.y):
+        curx = floor(curx1)
+        while curx <= ceil(curx2):
+            x, y = int(curx) % imgwidth, int(cury) % imgheight
+            yield x, y
+            curx += 1
+        if cury + 1 > v1.y:
+            factor = v1.y - cury
+            cury += 1
+            curx1 -= invslope1 * factor
+            curx2 += invslope2 * factor
+        else:
+            cury += 1
+            curx1 -= invslope1
+            curx2 += invslope2
