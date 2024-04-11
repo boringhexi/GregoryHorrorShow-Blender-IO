@@ -288,6 +288,9 @@ def determine_primlist_blend_method(
     if not (imgwidth and imgheight):
         return "OPAQUE"
 
+    imagepixels = [0] * imgwidth * imgheight * 4
+    bpyimage.pixels.foreach_get(imagepixels)
+
     # check for any image transparency that is covered by primlist's UVs
     for prim in primlist:
         # remember, prims are trilists, we need to make them separate triangles
@@ -337,13 +340,16 @@ def determine_primlist_blend_method(
                 if 0 <= x < imgwidth and 0 <= y < imgheight:
                     pixel = y * imgwidth + x
                     if TRIFILL_DEBUG:
-                        bpyimage.pixels[pixel * 4 : pixel * 4 + 4] = (1, 1, 1, 1)
+                        imagepixels[pixel * 4 : pixel * 4 + 4] = (1, 1, 1, 1)
                     else:
-                        alpha = bpyimage.pixels[pixel * 4 + 3]
+                        alpha = imagepixels[pixel * 4 + 3]
                         if 0 < alpha < TEXTURE_OPAQUE_CUTOFF:
                             return "BLEND"
                         elif alpha == 0:
                             encountered_zero_alpha = True
+
+    if TRIFILL_DEBUG:
+        bpyimage.pixels.foreach_set(imagepixels)
 
     # if an alpha value requiring BLEND was encountered, this function will have already
     # returned by now. That only leaves CLIP and OPAQUE
