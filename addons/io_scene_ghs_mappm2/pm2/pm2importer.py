@@ -276,10 +276,8 @@ def determine_primlist_blend_method(
     # check vertex colors for transparency
     for prim in primlist:
         for r, g, b, alpha in prim.colors:
-            if 0 < alpha < 1.0:
+            if alpha < 1.0:
                 return "BLEND"
-            elif alpha == 0:
-                encountered_zero_alpha = True
 
     # return early if image is opaque or invalid
     if bpyimage is None or bpyimage.channels < 4:
