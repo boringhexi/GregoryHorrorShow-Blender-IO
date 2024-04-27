@@ -44,7 +44,7 @@ class Pm2Importer:
         """
         self.pm2model = pm2model
         self.bl_name = bl_name
-        self._texdir = Path(texdir)
+        self._texdir = Path(texdir) if texdir is not None else None
         self._matsettings_materials_to_reuse = matsettings_materials_to_reuse
 
         self._bpycollection = bpy.context.collection
