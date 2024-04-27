@@ -236,7 +236,8 @@ class GhsImporter:
                 arm_modifier = pm2meshobj.modifiers.new("Armature", "ARMATURE")
                 arm_modifier.object = original_armobj
                 num_verts = len(pm2meshobj.data.vertices)
-                pm2meshobj.vertex_groups.new(name=boneidx_bonename)
+                if boneidx_bonename not in pm2meshobj.vertex_groups:
+                    pm2meshobj.vertex_groups.new(name=boneidx_bonename)
                 pm2meshobj.vertex_groups[boneidx_bonename].add(
                     range(num_verts), 1, "ADD"
                 )
