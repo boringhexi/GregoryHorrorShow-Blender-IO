@@ -14,19 +14,6 @@ from ..pm2.pm2model import Pm2Model
 from .meshposrot import mpr_from_file
 
 
-def any_nonempty_anims(anims: list[dict]):
-    """check if this ghs anim list has any actual animations/keyframes in it"""
-    for anim in anims:
-        if not anim:
-            continue
-        if "animation_data" not in anim:
-            continue
-        if not any(anim["animation_data"]):
-            continue
-        return True
-    return False
-
-
 def set_action_interpolation(bpyaction: Action):
     """set all pos/rot to LINEAR (but preserves CONSTANT) and all scale to CONSTANT"""
     for fcurve in bpyaction.fcurves:
@@ -193,7 +180,7 @@ class GhsImporter:
             pm2importer.import_scene()
             pm2meshobj = pm2importer.bl_meshobj
 
-            if any_nonempty_anims(anims) and self.anim_method != "TPOSE":
+            if self.anim_method != "TPOSE":
                 # create scalehide bone for this default body mesh
                 bpy.ops.object.mode_set(mode="EDIT")
                 scalehide_editbone = original_armobj.data.edit_bones.new(
