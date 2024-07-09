@@ -127,7 +127,7 @@ class GhsImporter:
         boneidx_to_bonename = dict()
         for boneidx, boneparentdata in enumerate(boneparentinfo):
             bpy.ops.object.mode_set(mode="EDIT")
-            bpyeditbone = original_armdata.edit_bones.new(name=str(boneidx))
+            bpyeditbone = original_armdata.edit_bones.new(name=f"b{boneidx:02}")
             bpyeditbone.tail = Vector((0, 1, 0))
             boneidx_to_bonename[boneidx] = bpyeditbone.name
             posebone_name = bpyeditbone.name
