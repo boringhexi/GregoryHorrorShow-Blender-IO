@@ -98,12 +98,14 @@ class Pm2Importer:
         uv_layer.data.foreach_set("uv", unpack_list(loop_uvcoords))
 
         # add vertex colors
-        color_attribute = me.color_attributes.new("", "FLOAT_COLOR", "POINT")
         colors = []
         for primlist in self.pm2model.primlists:
             for prim in primlist:
                 colors.extend(prim.colors)
-        color_attribute.data.foreach_set("color", unpack_list(colors))
+        # ...unless all the vertex colors are 100% opaque white (i.e. no visible effect)
+        if any(c != (1, 1, 1, 1) for c in colors):
+            color_attribute = me.color_attributes.new("", "FLOAT_COLOR", "POINT")
+            color_attribute.data.foreach_set("color", unpack_list(colors))
 
         # link mesh to Blender scene
         ob = bpy.data.objects.new(me.name, me)
