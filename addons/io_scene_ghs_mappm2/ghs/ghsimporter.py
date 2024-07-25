@@ -273,9 +273,12 @@ class GhsImporter:
                         break
 
                 # copy existing armature to use as a base
+                # (must copy both obj and data, since obj contains pose)
+                armobj = original_armobj.copy()
+                armobj.name = f"{self.bl_name}_a{animidx:02}_arm"
                 armdata = original_armdata.copy()
-                armdata.name = f"{self.bl_name}_a{animidx:02}_arm"
-                armobj = bpy.data.objects.new(armdata.name, armdata)
+                armdata.name = armobj.name
+                armobj.data = armdata
                 collection.objects.link(armobj)
                 bpy.context.view_layer.objects.active = armobj
                 # rotate it to correct the axes
