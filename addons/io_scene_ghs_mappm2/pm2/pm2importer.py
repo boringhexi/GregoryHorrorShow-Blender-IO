@@ -166,8 +166,10 @@ class Pm2Importer:
 
                 else:  # or create a new material
                     doublesided_name = "_ds" if doublesided else "_bc"
+                    blend_name = f"_{blend_method.lower()}"
                     matname = (
                         f"{self.bl_name}_0x{primlist_texoffset_trunc}{doublesided_name}"
+                        f"{blend_name}"
                     )
                     mat = bpy.data.materials.new(name=matname)
 
