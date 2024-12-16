@@ -69,6 +69,37 @@ def has_scale_keyframe_at_frame(armobj, scalehide_bonename, frame):
     return False
 
 
+def get_first_frame(bpyaction: Action) -> int:
+    """return first frame of bpyaction (counting from 0), or 0 if it has no frames"""
+    minframe = ...
+    for fcurve in bpyaction.fcurves:
+        if not fcurve.keyframe_points:
+            continue
+        fcurve.update()  # ensure keyframes are in chronological order
+        frame = int(fcurve.keyframe_points[0].co[0])
+        if frame == 0:
+            return 0
+        if minframe is ...:
+            minframe = frame
+        else:
+            minframe = min(minframe, frame)
+    if minframe is ...:
+        return 0
+    return minframe
+
+
+def get_last_frame(bpyaction: Action) -> int:
+    """return last frame of bpyaction (counting from 0), or 0 if it has no frames"""
+    maxframe = 0
+    for fcurve in bpyaction.fcurves:
+        if not fcurve.keyframe_points:
+            continue
+        fcurve.update()  # ensure keyframes are in chronological order
+        frame = int(fcurve.keyframe_points[-1].co[0])
+        maxframe = max(frame, maxframe)
+    return maxframe
+
+
 class GhsImporter:
     def __init__(
         self, ghspath, pm2dir, mprdir, texdir, bl_name="", anim_method="1LONG"
@@ -90,9 +121,10 @@ class GhsImporter:
         self.texdir = Path(texdir)
         self.bl_name = bl_name
         if anim_method not in (
+            "DRIVER",
+            "GLTF",
             "1LONG",
             "1LONG_EVERY100",
-            "DRIVER",
             "SEPARATE_ARMATURES",
             "TPOSE",
         ):
@@ -206,14 +238,14 @@ class GhsImporter:
                 )
                 # update important bone mappings
                 boneidx_to_default_scalehide_bonename[boneidx] = scalehide_bonename
-                default_scalehide_bonename_to_pm2mesh[
-                    scalehide_bonename
-                ] = pm2meshobj.data
+                default_scalehide_bonename_to_pm2mesh[scalehide_bonename] = (
+                    pm2meshobj.data
+                )
                 # and important mesh mappings
                 pm2idx_to_meshobj[pm2idx] = pm2meshobj
-                original_default_pm2mesh_to_scalehide_bonename[
-                    pm2meshobj.data
-                ] = scalehide_bonename
+                original_default_pm2mesh_to_scalehide_bonename[pm2meshobj.data] = (
+                    scalehide_bonename
+                )
             else:
                 # don't weigh to a scalehide bone, weigh directly to the boneidx bone
                 bpy.ops.object.mode_set(mode="POSE")
@@ -230,7 +262,7 @@ class GhsImporter:
                 )
         bpy.ops.object.mode_set(mode="OBJECT")
 
-        if self.anim_method in ("DRIVER", "1LONG", "1LONG_EVERY100", "TPOSE"):
+        if self.anim_method in ("DRIVER", "GLTF", "1LONG", "1LONG_EVERY100", "TPOSE"):
             armobj = original_armobj
         else:  # elif self.anim_method = "SEPARATE_ARMATURES"
             armobj = None
@@ -253,6 +285,7 @@ class GhsImporter:
         pm2idx_to_driverbone = dict()
         animidx_to_scalehide_bones = defaultdict(list)
         boneidx_to_scalehide_bones = defaultdict(list)
+        animated_shapekeys = set()
         deleteme_bonenames = []
         made_copies = False
         next_anim_start_frame = 0
@@ -312,15 +345,20 @@ class GhsImporter:
                     )
                     # update important mesh mappings
                     pm2idx_to_meshobj[pm2idx] = pm2meshobj
-                    default_scalehide_bonename_to_pm2mesh[
-                        scalehide_bonename
-                    ] = pm2meshobj.data
+                    default_scalehide_bonename_to_pm2mesh[scalehide_bonename] = (
+                        pm2meshobj.data
+                    )
 
                 made_copies = True
 
-            if self.anim_method == "DRIVER":
+            # Clear out the previous animation's actions
+            if self.anim_method in ("DRIVER", "GLTF"):
                 if armobj.animation_data is not None:
                     armobj.animation_data.action = None
+            if self.anim_method == "GLTF":
+                for shape_keys in animated_shapekeys:  # shape keys from previous anim
+                    shape_keys.animation_data.action = None
+            animated_shapekeys = set()
 
             if self.anim_method == "TPOSE":
                 # pose armature using 1st frame of 1st mpr
@@ -391,7 +429,10 @@ class GhsImporter:
             shapekeys_already_keyframed = set()
             shapekeyactions = set()
 
-            if self.anim_method == "DRIVER" and armobj.animation_data is not None:
+            if (
+                self.anim_method in ("DRIVER", "GLTF", "SEPARATE_ARMATURES")
+                and armobj.animation_data is not None
+            ):
                 bpyaction: Action = armobj.animation_data.action
                 anim_name = f"{animidx:02}"
                 # put this Action into a new NLA track/strip
@@ -400,12 +441,13 @@ class GhsImporter:
                 bpy_nla_strip = bpy_nla_track.strips.new(anim_name, 0, bpyaction)
                 bpy_nla_strip.name = anim_name  # because it didn't stick the first time
                 bpy_nla_strip.action_frame_end = anim["anim_len"] - 1
-                # uncomment line below for full anim length in DRIVER/SEPARATE_ARMATURES
+                # uncomment line below to make NLA strip last the full anim length
                 # bpy_nla_strip.action_frame_end = fullanimlengths[animidx]
-                # lock and mute all NLA tracks, just like the glTF importer. This way an
-                # animation only plays when it is starred/solo'd in the GUI
-                bpy_nla_track.mute = True
-                bpy_nla_track.lock = True
+                if self.anim_method != "SEPARATE_ARMATURES":
+                    # lock and mute all NLA tracks, just like the glTF importer. This
+                    # way an animation only plays when it is starred/solo'd in the GUI
+                    bpy_nla_track.mute = True
+                    bpy_nla_track.lock = True
 
             this_anim_start_frame = next_anim_start_frame
             next_anim_start_frame = 0
@@ -657,6 +699,7 @@ class GhsImporter:
                         # animate shapekey of model
                         if pm2meshobj.data.shape_keys is not None:
                             shapekey = pm2meshobj.data.shape_keys.key_blocks["Anim"]
+                            animated_shapekeys.add(pm2meshobj.data.shape_keys)
                             if self.anim_method == "DRIVER":
                                 if pm2idx in pm2idx_to_driverbone:
                                     driver_bonename = pm2idx_to_driverbone[pm2idx]
@@ -787,7 +830,36 @@ class GhsImporter:
                 )
                 delete_deleteme_bones(deleteme_bonenames, armobj)
 
-        if self.anim_method == "DRIVER":
+            # Now that an anim is done, group the armature and shapekey anims together
+            # by putting them in NLA tracks with the same name.
+            if self.anim_method in ("GLTF", "SEPARATE_ARMATURES"):
+                for shape_keys in animated_shapekeys:
+                    bpyaction: Action = shape_keys.animation_data.action
+                    if bpyaction is None:
+                        continue
+
+                    anim_name = f"{animidx:02}"
+                    # put this Action into a new NLA track/strip
+                    bpy_nla_track = shape_keys.animation_data.nla_tracks.new()
+                    bpy_nla_track.name = anim_name
+                    first_frame = get_first_frame(bpyaction)
+                    bpy_nla_strip = bpy_nla_track.strips.new(
+                        anim_name, first_frame, bpyaction
+                    )
+                    bpy_nla_strip.name = (
+                        anim_name  # because it didn't stick the first time
+                    )
+                    last_frame = get_last_frame(bpyaction)
+                    bpy_nla_strip.action_frame_end = last_frame
+                    # uncomment line below to make NLA strip last the full anim length
+                    # bpy_nla_strip.action_frame_end = fullanimlengths[animidx]
+                    if self.anim_method != "SEPARATE_ARMATURES":
+                        # lock and mute all NLA tracks,just like the glTF importer. This
+                        # way an anim only plays when it is starred/solo'd in the GUI
+                        bpy_nla_track.mute = True
+                        bpy_nla_track.lock = True
+
+        if self.anim_method in ("DRIVER", "GLTF"):
             # scale to 0 all scalehide bones not in the current animation
             bpy.ops.object.mode_set(mode="POSE")
             all_actions = []

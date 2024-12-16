@@ -55,24 +55,32 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         items=[
             (
                 "DRIVER",
-                "NLA Tracks",
-                "Imports animations as separate NLA tracks. Works well as an animation "
-                "viewer, but may have trouble exporting animations to other formats",
+                "Easy animation viewer",
+                "Imports animations as separate NLA tracks with shapekey drivers. "
+                "Works well as an animation viewer, but may have trouble exporting "
+                "shapekey animations to other formats",
+            ),
+            (
+                "GLTF",
+                "For glTF export",
+                "Imports animations as separate NLA tracks, also using NLA tracks for "
+                "shapekey animations. From this, glTF exporter can then export a "
+                "single file with multiple animations, including shapekey animations"
             ),
             (
                 "1LONG",
-                "Single Timeline",
+                "Single timeline",
                 "Imports all animations into the timeline in sequence",
             ),
             (
                 "1LONG_EVERY100",
-                "Single Timeline (starts every 100)",
+                "Single timeline (starts every 100)",
                 "Each animation starts on a multiple of 100 frames. Suitable for "
                 "exporting to Unity",
             ),
             (
                 "SEPARATE_ARMATURES",
-                "Separate Armatures",
+                "Separate armatures",
                 "Creates a new armature for each animation. Suitable for exporting "
                 "each animation to a separate file",
             ),
