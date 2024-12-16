@@ -393,7 +393,7 @@ class GhsImporter:
 
             if self.anim_method == "DRIVER" and armobj.animation_data is not None:
                 bpyaction: Action = armobj.animation_data.action
-                anim_name = str(animidx)
+                anim_name = f"{animidx:02}"
                 # put this Action into a new NLA track/strip
                 bpy_nla_track = armobj.animation_data.nla_tracks.new()
                 bpy_nla_track.name = anim_name
