@@ -104,8 +104,18 @@ class Pm2Importer:
                 colors.extend(prim.colors)
         # ...unless all the vertex colors are 100% opaque white (i.e. no visible effect)
         if any(c != (1, 1, 1, 1) for c in colors):
-            color_attribute = me.color_attributes.new("", "FLOAT_COLOR", "POINT")
-            color_attribute.data.foreach_set("color", unpack_list(colors))
+            if hasattr(me, "color_attributes"):
+                color_attribute = me.color_attributes.new("", "FLOAT_COLOR", "POINT")
+                color_attribute.data.foreach_set("color", unpack_list(colors))
+            elif hasattr(me, "vertex_colors"):  # Blender 3.0-3.1 compatibility
+                color_layer = me.vertex_colors.new()
+                loop_vcolors = (colors[lo.vertex_index] for lo in me.loops)
+                color_layer.data.foreach_set("color", unpack_list(loop_vcolors))
+            else:
+                raise AttributeError(
+                    "Mesh data has neither `color_attributes` nor `vertex_colors`, "
+                    "can't set vertex colors"
+                )
 
         # link mesh to Blender scene
         ob = bpy.data.objects.new(me.name, me)
