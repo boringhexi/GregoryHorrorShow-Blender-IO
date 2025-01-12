@@ -717,6 +717,7 @@ class GhsImporter:
                                     driver_bonename = driver_editbone.name
 
                                     # Link driver bone to shape key
+                                    bpy.ops.object.mode_set(mode="OBJECT")
                                     fcurve = pm2meshobj.data.shape_keys.key_blocks[
                                         "Anim"
                                     ].driver_add("value")
