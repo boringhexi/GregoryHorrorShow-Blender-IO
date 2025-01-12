@@ -10,7 +10,7 @@ bl_info = {
     "location": "File > Import",
     "description": "For .ghs and .map-pm2 files from Gregory Horror Show (PS2)",
     "warning": "",
-    "doc_url": "https://github.com/boringhexi/blender3d_GregoryHorrorShow/wiki",
+    "doc_url": "https://github.com/boringhexi/GregoryHorrorShow-Blender-IO/wiki",
     "category": "Import-Export",
 }
 
