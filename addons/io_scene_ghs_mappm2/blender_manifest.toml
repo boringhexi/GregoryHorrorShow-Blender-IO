@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+id = "io_import_ghs_mappm2"
+version = "0.1.9"
+name = "Import Gregory Horror Show"
+tagline = "Import GHS/MAP-PM2/PM2 files from Gregory Horror Show (PS2)"
+maintainer = "boringhexi <boringhexi@pm.me>"
+type = "add-on"
+website = "https://github.com/boringhexi/GregoryHorrorShow-Blender-IO/wiki"
+tags = ["Import-Export"]
+blender_version_min = "3.0.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Import models and textures from disk"
