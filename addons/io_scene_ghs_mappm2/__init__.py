@@ -3,12 +3,12 @@ from bpy.props import CollectionProperty, EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
-    "name": "Gregory Horror Show GHS/MAP-PM2 format",
+    "name": "Import Gregory Horror Show",
     "author": "boringhexi",
     "version": (0, 2, 0),
     "blender": (3, 0, 0),
     "location": "File > Import",
-    "description": "For .ghs and .map-pm2 files from Gregory Horror Show (PS2)",
+    "description": "Import GHS/MAP-PM2/PM2 files from Gregory Horror Show (PS2)",
     "warning": "",
     "doc_url": "https://github.com/boringhexi/GregoryHorrorShow-Blender-IO/",
     "category": "Import-Export",
