@@ -185,8 +185,17 @@ class Pm2Importer:
 
                     # set some material settings
                     mat.use_backface_culling = not doublesided
-                    mat.blend_method = blend_method
-                    mat.show_transparent_back = False
+                    if hasattr(mat, "surface_render_method"):
+                        if blend_method in ("OPAQUE", "CLIP"):
+                            mat.surface_render_method = "DITHERED"
+                        else:
+                            mat.surface_render_method = "BLENDED"
+                    else:
+                        mat.blend_method = blend_method
+                    if hasattr(mat, "use_transparency_overlap"):
+                        mat.use_transparency_overlap = False
+                    else:
+                        mat.show_transparent_back = False
 
                     # set up the material nodes
                     mat.use_nodes = True
@@ -198,9 +207,16 @@ class Pm2Importer:
                     mat.node_tree.links.new(
                         teximgnode.outputs["Color"], pbsdfnode.inputs["Base Color"]
                     )
-                    mat.node_tree.links.new(
-                        teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
-                    )
+                    # Prevent linking potentially transparent texture alpha if we've
+                    # decided we want an opaque material. Otherwise, glTF may have
+                    # sorting problems when exported from Blender 4.2+
+                    if (
+                        hasattr(mat, "surface_render_method")
+                        and mat.surface_render_method == "BLENDED"
+                    ) or (mat.blend_method in ("BLEND", "CLIP")):
+                        mat.node_tree.links.new(
+                            teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
+                        )
                     # assign loaded texture to this Image Texture node
                     teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
                     teximgnode.image = teximage
