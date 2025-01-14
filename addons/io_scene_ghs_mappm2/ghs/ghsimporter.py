@@ -790,6 +790,14 @@ class GhsImporter:
                                             "value", frame=frame_offset
                                         )
                                         shapekeys_already_keyframed.add(shapekey)
+                                # place additional keyframe at anim start if the first
+                                # keyframe is late; helps prevent glTF re-import issues
+                                if self.anim_method == "GLTF":
+                                    if (
+                                        shapekey not in shapekeys_already_keyframed
+                                        and keyframe_start > 0
+                                    ):
+                                        shapekey.keyframe_insert("value", frame=0)
 
                                 if (
                                     next_keyframe is not None
@@ -808,7 +816,12 @@ class GhsImporter:
                     set_action_1frame_interpolation(
                         skaction, -1, ("value",), "CONSTANT"
                     )
-            if self.anim_method in ("1LONG", "1LONG_EVERY100", "SEPARATE_ARMATURES"):
+            if self.anim_method in (
+                "1LONG",
+                "1LONG_EVERY100",
+                "SEPARATE_ARMATURES",
+                "GLTF",
+            ):
                 for skaction in shapekeyactions:
                     set_action_interpolation(skaction)
             if (
