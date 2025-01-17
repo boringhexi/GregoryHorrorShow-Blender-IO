@@ -938,6 +938,14 @@ class GhsImporter:
             )
             delete_deleteme_bones(deleteme_bonenames, armobj)
 
+        # Clear out the final animation's actions
+        if self.anim_method in ("DRIVER", "GLTF"):
+            if armobj.animation_data is not None:
+                armobj.animation_data.action = None
+        if self.anim_method == "GLTF":
+            for shape_keys in animated_shapekeys:  # shape keys from final anim
+                shape_keys.animation_data.action = None
+
         bpy.ops.object.mode_set(mode="OBJECT")
         if self.anim_method == "SEPARATE_ARMATURES" and made_copies:
             # delete the original armature, we made copies of it but aren't using it
