@@ -789,7 +789,6 @@ class GhsImporter:
                                         shapekey.keyframe_insert(
                                             "value", frame=frame_offset
                                         )
-                                        shapekeys_already_keyframed.add(shapekey)
                                 # place additional keyframe at anim start if the first
                                 # keyframe is late; helps prevent glTF re-import issues
                                 if self.anim_method == "GLTF":
@@ -798,6 +797,7 @@ class GhsImporter:
                                         and keyframe_start > 0
                                     ):
                                         shapekey.keyframe_insert("value", frame=0)
+                                shapekeys_already_keyframed.add(shapekey)
 
                                 if (
                                     next_keyframe is not None
