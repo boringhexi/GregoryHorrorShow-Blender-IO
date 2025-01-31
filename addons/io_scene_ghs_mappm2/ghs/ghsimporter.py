@@ -69,25 +69,6 @@ def has_scale_keyframe_at_frame(armobj, scalehide_bonename, frame):
     return False
 
 
-def get_first_frame(bpyaction: Action) -> int:
-    """return first frame of bpyaction (counting from 0), or 0 if it has no frames"""
-    minframe = ...
-    for fcurve in bpyaction.fcurves:
-        if not fcurve.keyframe_points:
-            continue
-        fcurve.update()  # ensure keyframes are in chronological order
-        frame = int(fcurve.keyframe_points[0].co[0])
-        if frame == 0:
-            return 0
-        if minframe is ...:
-            minframe = frame
-        else:
-            minframe = min(minframe, frame)
-    if minframe is ...:
-        return 0
-    return minframe
-
-
 def get_last_frame(bpyaction: Action) -> int:
     """return last frame of bpyaction (counting from 0), or 0 if it has no frames"""
     maxframe = 0
@@ -429,6 +410,10 @@ class GhsImporter:
             shapekeys_already_keyframed = set()
             shapekeyactions = set()
 
+            this_anim_length = anim["anim_len"] - 1
+            # uncomment line below to make NLA anims the full anim length
+            # this_anim_length = fullanimlengths[animidx]
+
             if (
                 self.anim_method in ("DRIVER", "GLTF", "SEPARATE_ARMATURES")
                 and armobj.animation_data is not None
@@ -440,9 +425,7 @@ class GhsImporter:
                 bpy_nla_track.name = anim_name
                 bpy_nla_strip = bpy_nla_track.strips.new(anim_name, 0, bpyaction)
                 bpy_nla_strip.name = anim_name  # because it didn't stick the first time
-                bpy_nla_strip.action_frame_end = anim["anim_len"] - 1
-                # uncomment line below to make NLA strip last the full anim length
-                # bpy_nla_strip.action_frame_end = fullanimlengths[animidx]
+                bpy_nla_strip.action_frame_end = this_anim_length
                 if self.anim_method != "SEPARATE_ARMATURES":
                     # lock and mute all NLA tracks, just like the glTF importer. This
                     # way an animation only plays when it is starred/solo'd in the GUI
@@ -848,25 +831,26 @@ class GhsImporter:
             # by putting them in NLA tracks with the same name.
             if self.anim_method in ("GLTF", "SEPARATE_ARMATURES"):
                 for shape_keys in animated_shapekeys:
-                    bpyaction: Action = shape_keys.animation_data.action
-                    if bpyaction is None:
+                    skaction: Action = shape_keys.animation_data.action
+                    if skaction is None:
                         continue
 
                     anim_name = f"{animidx:02}"
                     # put this Action into a new NLA track/strip
                     bpy_nla_track = shape_keys.animation_data.nla_tracks.new()
                     bpy_nla_track.name = anim_name
-                    first_frame = get_first_frame(bpyaction)
-                    bpy_nla_strip = bpy_nla_track.strips.new(
-                        anim_name, first_frame, bpyaction
+                    bpy_nla_strip = bpy_nla_track.strips.new(anim_name, 0, skaction)
+                    bpy_nla_strip.name = anim_name  # didn't stick the first time
+                    action_last_frame = get_last_frame(skaction)
+                    bpy_nla_strip.action_frame_end = min(
+                        action_last_frame, this_anim_length
                     )
-                    bpy_nla_strip.name = (
-                        anim_name  # because it didn't stick the first time
-                    )
-                    last_frame = get_last_frame(bpyaction)
-                    bpy_nla_strip.action_frame_end = last_frame
-                    # uncomment line below to make NLA strip last the full anim length
-                    # bpy_nla_strip.action_frame_end = fullanimlengths[animidx]
+                    if self.anim_method == "GLTF":
+                        if action_last_frame > this_anim_length:
+                            # Set manual frame range if action is too long
+                            skaction.use_frame_range = True
+                            skaction.frame_range = (0, this_anim_length)
+
                     if self.anim_method != "SEPARATE_ARMATURES":
                         # lock and mute all NLA tracks,just like the glTF importer. This
                         # way an anim only plays when it is starred/solo'd in the GUI
@@ -885,6 +869,18 @@ class GhsImporter:
                     bpyaction = bpy_nla_strip.action
                     armobj.animation_data.action = bpyaction
                     all_actions.append(bpyaction)
+
+                    # while we're at it, now that fcurves' lengths are finalized by now,
+                    # shorten NLA strips & Actions to desired animation length
+                    this_anim_length = bpy_nla_strip.action_frame_end
+                    action_last_frame = get_last_frame(bpyaction)
+                    bpy_nla_strip.action_frame_end = min(
+                        action_last_frame, this_anim_length
+                    )
+                    if action_last_frame > this_anim_length:
+                        # Set manual frame range if Action is too long
+                        bpyaction.use_frame_range = True
+                        bpyaction.frame_range = (0, this_anim_length)
 
                     # for all scalehide bones not in this animation, set frame 0 to
                     # scale 0 if there isn't already a scale keyframe there
