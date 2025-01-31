@@ -420,6 +420,7 @@ class GhsImporter:
             ):
                 bpyaction: Action = armobj.animation_data.action
                 anim_name = f"Anim{animidx:02}"
+                bpyaction.name = anim_name
                 # put this Action into a new NLA track/strip
                 bpy_nla_track = armobj.animation_data.nla_tracks.new()
                 bpy_nla_track.name = anim_name
@@ -752,6 +753,7 @@ class GhsImporter:
                                 skaction = (
                                     pm2meshobj.data.shape_keys.animation_data.action
                                 )
+                                skaction.name = f"Anim{animidx:02}_{pm2meshobj.name}"
                                 if interp_shapekey_constant:
                                     set_action_1frame_interpolation(
                                         skaction, -1, ("value",), "CONSTANT"
