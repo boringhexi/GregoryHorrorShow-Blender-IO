@@ -419,7 +419,7 @@ class GhsImporter:
                 and armobj.animation_data is not None
             ):
                 bpyaction: Action = armobj.animation_data.action
-                anim_name = f"{animidx:02}"
+                anim_name = f"Anim{animidx:02}"
                 # put this Action into a new NLA track/strip
                 bpy_nla_track = armobj.animation_data.nla_tracks.new()
                 bpy_nla_track.name = anim_name
@@ -835,7 +835,7 @@ class GhsImporter:
                     if skaction is None:
                         continue
 
-                    anim_name = f"{animidx:02}"
+                    anim_name = f"Anim{animidx:02}"
                     # put this Action into a new NLA track/strip
                     bpy_nla_track = shape_keys.animation_data.nla_tracks.new()
                     bpy_nla_track.name = anim_name
