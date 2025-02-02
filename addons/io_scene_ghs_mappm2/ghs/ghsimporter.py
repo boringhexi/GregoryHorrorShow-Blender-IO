@@ -272,6 +272,7 @@ class GhsImporter:
         next_anim_start_frame = 0
 
         for animidx, (anim, mpr) in enumerate(zip(anims, mprs)):
+            full_anim_len = fullanimlengths[animidx]
             is_last_animation = animidx + 1 == len(anims)
 
             if self.anim_method == "SEPARATE_ARMATURES":
@@ -412,7 +413,7 @@ class GhsImporter:
 
             this_anim_length = anim["anim_len"] - 1
             # uncomment line below to make NLA anims the full anim length
-            # this_anim_length = fullanimlengths[animidx]
+            # this_anim_length = full_anim_len
 
             if (
                 self.anim_method in ("DRIVER", "GLTF", "SEPARATE_ARMATURES")
@@ -435,7 +436,7 @@ class GhsImporter:
 
             this_anim_start_frame = next_anim_start_frame
             next_anim_start_frame = 0
-            last_frame = fullanimlengths[animidx]
+            last_frame = full_anim_len
             if self.anim_method == "1LONG":
                 next_anim_start_frame = frame_offset + last_frame + 1
             elif self.anim_method == "1LONG_EVERY100":
