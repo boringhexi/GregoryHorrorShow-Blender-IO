@@ -883,7 +883,11 @@ class GhsImporter:
                     if action_last_frame > this_anim_length:
                         # Set manual frame range if Action is too long
                         bpyaction.use_frame_range = True
-                        bpyaction.frame_range = (0, this_anim_length)
+                        bpyaction.frame_start = 0
+                        bpyaction.frame_end = this_anim_length
+                        # manual frame range of (0,0) will be ignored, so use (0,1)
+                        if bpyaction.frame_end == 0:
+                            bpyaction.frame_end = 1
 
                     # for all scalehide bones not in this animation, set frame 0 to
                     # scale 0 if there isn't already a scale keyframe there
