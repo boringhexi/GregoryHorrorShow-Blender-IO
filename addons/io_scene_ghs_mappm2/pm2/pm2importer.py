@@ -16,7 +16,7 @@ from .pm2model import AnimatedPrim, Pm2Model, PrimList
 TRIFILL_DEBUG = False
 
 MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided", "blend_method"))
-# blend_method can be any Blender blend method, e.g. OPAQUE, CLIP, BLEND
+# blend_method can be "OPAQUE", "CLIP", or "BLEND"
 MyUV = namedtuple("MyUV", "x, y")
 TEXTURE_OPAQUE_CUTOFF = 0x7E / 128
 
