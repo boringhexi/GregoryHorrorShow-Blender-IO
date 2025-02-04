@@ -411,7 +411,7 @@ class GhsImporter:
             shapekeys_already_keyframed = set()
             shapekeyactions = set()
 
-            this_anim_length = anim["anim_len"] - 1
+            this_anim_length = max(anim["anim_len"] - 1, 1)
             # uncomment line below to make NLA anims the full anim length
             # this_anim_length = full_anim_len
 
@@ -885,9 +885,6 @@ class GhsImporter:
                         bpyaction.use_frame_range = True
                         bpyaction.frame_start = 0
                         bpyaction.frame_end = this_anim_length
-                        # manual frame range of (0,0) will be ignored, so use (0,1)
-                        if bpyaction.frame_end == 0:
-                            bpyaction.frame_end = 1
 
                     # for all scalehide bones not in this animation, set frame 0 to
                     # scale 0 if there isn't already a scale keyframe there
