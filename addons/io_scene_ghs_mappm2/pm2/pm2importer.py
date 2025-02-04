@@ -210,10 +210,7 @@ class Pm2Importer:
                     # Prevent linking potentially transparent texture alpha if we've
                     # decided we want an opaque material. Otherwise, glTF may have
                     # sorting problems when exported from Blender 4.2+
-                    if (
-                        hasattr(mat, "surface_render_method")
-                        and mat.surface_render_method == "BLENDED"
-                    ) or (mat.blend_method in ("BLEND", "CLIP")):
+                    if blend_method in ("BLEND", "CLIP"):
                         mat.node_tree.links.new(
                             teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
                         )
