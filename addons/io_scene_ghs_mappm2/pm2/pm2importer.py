@@ -18,7 +18,7 @@ TRIFILL_DEBUG = False
 MatSettings = namedtuple("MatSettings", ("texoffset", "doublesided", "blend_method"))
 # blend_method can be "OPAQUE", "CLIP", or "BLEND"
 MyUV = namedtuple("MyUV", "x, y")
-TEXTURE_OPAQUE_CUTOFF = 0x7E / 128
+ALPHA_OPAQUE_CUTOFF = 0x7E / 128
 
 
 class Pm2Importer:
@@ -303,7 +303,7 @@ def determine_primlist_blend_method(
     # check vertex colors for transparency
     for prim in primlist:
         for r, g, b, alpha in prim.colors:
-            if alpha < 1.0:
+            if alpha < ALPHA_OPAQUE_CUTOFF:
                 return "BLEND"
 
     # return early if image is opaque or invalid
@@ -368,7 +368,7 @@ def determine_primlist_blend_method(
                         imagepixels[pixel * 4 : pixel * 4 + 4] = (1, 1, 1, 1)
                     else:
                         alpha = imagepixels[pixel * 4 + 3]
-                        if 0 < alpha < TEXTURE_OPAQUE_CUTOFF:
+                        if 0 < alpha < ALPHA_OPAQUE_CUTOFF:
                             return "BLEND"
                         elif alpha == 0:
                             encountered_zero_alpha = True
