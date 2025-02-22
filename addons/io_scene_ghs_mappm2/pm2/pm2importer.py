@@ -289,6 +289,7 @@ def find_principled_bsdf_node(mat: Material) -> Optional[ShaderNodeBsdfPrinciple
 def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mode):
     mat.use_nodes = True
     pbsdfnode = find_principled_bsdf_node(mat)
+    pbsdfnode.inputs["Roughness"].default_value = 1.0
     pbsdf_x, pbsdf_y = pbsdfnode.location
 
     teximgnode = mat.node_tree.nodes.new("ShaderNodeTexImage")
