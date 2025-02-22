@@ -8,7 +8,9 @@ from .pm2.pm2importer import Pm2Importer
 from .pm2.pm2model import Pm2Model
 
 
-def load_ghs_mappm2(context, *, filepath, files, ghs_anim_method="DRIVER"):
+def load_ghs_mappm2(
+    context, *, filepath, files, ghs_anim_method="DRIVER", vcol_materials=True
+):
     dirname = os.path.dirname(filepath)
     for file in files:
         filepath = os.path.join(dirname, file.name)
@@ -18,14 +20,22 @@ def load_ghs_mappm2(context, *, filepath, files, ghs_anim_method="DRIVER"):
             texdir, pm2dir, mprdir = find_ghs_import_dirs(filepath)
             bl_name = file.name
             ghsimporter = GhsImporter(
-                filepath, pm2dir, mprdir, texdir, bl_name, anim_method=ghs_anim_method
+                filepath,
+                pm2dir,
+                mprdir,
+                texdir,
+                bl_name,
+                anim_method=ghs_anim_method,
+                vcol_materials=vcol_materials,
             )
             ghsimporter.import_stuff()
 
         elif ext == ".map-pm2":
             texdir = find_mappm2_tex_dir(filepath)
             bl_name = file.name
-            mappm2importer = MapPm2Importer(filepath, texdir, bl_name)
+            mappm2importer = MapPm2Importer(
+                filepath, texdir, bl_name, vcol_materials=vcol_materials
+            )
             mappm2importer.import_mappm2()
 
         elif ext == ".pm2":
@@ -33,7 +43,10 @@ def load_ghs_mappm2(context, *, filepath, files, ghs_anim_method="DRIVER"):
                 pm2model = Pm2Model.from_file(fp)
 
             bl_name = os.path.splitext(file.name)[0]
-            pm2importer = Pm2Importer(pm2model, bl_name=bl_name)
+            vcol_material_mode = ("RGBA" if vcol_materials else "NONE")
+            pm2importer = Pm2Importer(
+                pm2model, bl_name=bl_name, vcol_material_mode=vcol_material_mode
+            )
             pm2importer.import_scene()
 
             # also needs to be rotated to correct axes

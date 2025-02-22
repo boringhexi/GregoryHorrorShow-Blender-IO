@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import CollectionProperty, EnumProperty, StringProperty
+from bpy.props import BoolProperty, CollectionProperty, EnumProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
@@ -65,7 +65,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
                 "For glTF export",
                 "Imports animations as separate NLA tracks, also using NLA tracks for "
                 "shapekey animations. From this, glTF exporter can then export a "
-                "single file with multiple animations, including shapekey animations"
+                "single file with multiple animations, including shapekey animations",
             ),
             (
                 "1LONG",
@@ -90,10 +90,16 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
                 "Approximates a good-enough T-Pose (by using only default model parts, "
                 "no animation, and no rest pose rotation)",
             ),
-
         ],
         description="How .ghs animations should be imported",
         default="DRIVER",
+    )
+
+    vcol_materials: BoolProperty(
+        name="Vertex color materials",
+        description="Makes vertex colors visible via material node setup. "
+        "(Some formats may not export textures properly with this enabled)",
+        default=True,
     )
 
     def draw(self, context):
@@ -103,6 +109,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         layout.use_property_decorate = False  # No animation.
 
         layout.prop(self, "ghs_anim_method")
+        layout.prop(self, "vcol_materials")
 
     def execute(self, context):
         # to reduce Blender startup time, delay import until now

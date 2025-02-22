@@ -10,7 +10,7 @@ from .mappm2container import MapPm2Container
 
 
 class MapPm2Importer:
-    def __init__(self, mappm2path, texdir, bl_name=""):
+    def __init__(self, mappm2path, texdir, bl_name="", vcol_materials=True):
         """
 
         :param mappm2path:
@@ -19,6 +19,7 @@ class MapPm2Importer:
         self.mappm2path = Path(mappm2path)
         self.texdir = texdir
         self.bl_name = bl_name
+        self._vcol_materials = vcol_materials
         self._matsettings_materials_to_reuse: dict[MatSettings, Material] = dict()
 
     def import_mappm2(self):
@@ -37,12 +38,14 @@ class MapPm2Importer:
                 break
 
         # import pm2 files
+        vcol_material_mode = "RGB" if self._vcol_materials else "NONE"
         for i, contentfile in enumerate(mappm2container):
             pm2model = Pm2Model.from_file(contentfile)
             pm2importer = Pm2Importer(
                 pm2model,
                 bl_name=f"{self.bl_name}_{i:03}",
                 texdir=self.texdir,
+                vcol_material_mode=vcol_material_mode,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()

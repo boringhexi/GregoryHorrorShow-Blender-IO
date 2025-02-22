@@ -83,7 +83,14 @@ def get_last_frame(bpyaction: Action) -> int:
 
 class GhsImporter:
     def __init__(
-        self, ghspath, pm2dir, mprdir, texdir, bl_name="", anim_method="1LONG"
+        self,
+        ghspath,
+        pm2dir,
+        mprdir,
+        texdir,
+        bl_name="",
+        anim_method="1LONG",
+        vcol_materials=True,
     ):
         """
 
@@ -95,6 +102,7 @@ class GhsImporter:
         of 100 frames), "DRIVER" (separate animations, uses a driver bone to drive shape
         keys), or "SEPARATE_ARMATURES" (each animation gets a separate armature)
         :param bl_name:
+        :param vcol_materials: if True, setup vertex color materials
         """
         self.ghspath = Path(ghspath)
         self.pm2dir = Path(pm2dir)
@@ -111,9 +119,12 @@ class GhsImporter:
         ):
             raise ValueError(f"Unknown anim_method {anim_method!r}")
         self.anim_method = anim_method
+        self._vcol_materials = vcol_materials
         self._matsettings_materials_to_reuse: dict[MatSettings, Material] = dict()
 
     def import_stuff(self):
+        vcol_material_mode = "RGBA" if self._vcol_materials else "NONE"
+
         # load ghs data and MeshPosRots
         with open(self.ghspath, "rt") as ghsfile:
             ghsdata = json.load(ghsfile)
@@ -188,6 +199,7 @@ class GhsImporter:
                 pm2model,
                 bl_name=f"b{boneidx:02}_p{pm2idx:03x}",
                 texdir=self.texdir,
+                vcol_material_mode=vcol_material_mode,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
@@ -661,6 +673,7 @@ class GhsImporter:
                                 pm2model,
                                 bl_name=pm2name,
                                 texdir=self.texdir,
+                                vcol_material_mode=vcol_material_mode,
                                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
                             )
                             pm2importer.import_scene()

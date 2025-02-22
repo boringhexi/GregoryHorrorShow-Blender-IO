@@ -27,6 +27,7 @@ class Pm2Importer:
         pm2model: Pm2Model,
         bl_name: str = "",
         texdir: Union[str, PathLike[str], None] = None,
+        vcol_material_mode: str = "RGBA",
         matsettings_materials_to_reuse: Optional[dict[MatSettings, Material]] = None,
     ):
         """imports a PM2 model, including any vertex animation
@@ -37,6 +38,8 @@ class Pm2Importer:
         :param pm2model: pm2 model to import
         :param bl_name: what to name this mesh in Blender. Also used to name materials
         :param texdir: if provided, path to directory containing textures to load
+        :param vcol_material_mode: one of "RGBA", "RGB", or "NONE". Whether to include
+            vertex colors in the materials
         :param matsettings_materials_to_reuse: if provided, a mapping of MatSettings to
             Blender materials. The import process will reuse an existing material if
             its MatSettings is encountered, and the mapping will be updated with any new
@@ -46,6 +49,13 @@ class Pm2Importer:
         self.bl_name = bl_name
         self._texdir = Path(texdir) if texdir is not None else None
         self._matsettings_materials_to_reuse = matsettings_materials_to_reuse
+
+        if vcol_material_mode not in ("RGBA", "RGB", "NONE"):
+            raise ValueError(
+                'vcol_material_mode must be one of "RGBA", "RGB", "NONE", '
+                f"was {vcol_material_mode!r}"
+            )
+        self._vcol_material_mode = vcol_material_mode
 
         self._bpycollection = bpy.context.collection
         self.bl_meshobj = None
@@ -197,26 +207,11 @@ class Pm2Importer:
                     else:
                         mat.show_transparent_back = False
 
-                    # set up the material nodes
-                    mat.use_nodes = True
-                    pbsdfnode = find_principled_bsdf_node(mat)
-                    # place Image Texture node to left of Principled BSDF node & connect
-                    teximgnode = mat.node_tree.nodes.new("ShaderNodeTexImage")
-                    pbsdfnode_x, pbsdfnode_y = pbsdfnode.location
-                    teximgnode.location = pbsdfnode_x - 290, pbsdfnode_y
-                    mat.node_tree.links.new(
-                        teximgnode.outputs["Color"], pbsdfnode.inputs["Base Color"]
-                    )
-                    # Prevent linking potentially transparent texture alpha if we've
-                    # decided we want an opaque material. Otherwise, glTF may have
-                    # sorting problems when exported from Blender 4.2+
-                    if blend_method in ("BLEND", "CLIP"):
-                        mat.node_tree.links.new(
-                            teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
-                        )
-                    # assign loaded texture to this Image Texture node
+                    # set up material nodes
                     teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
-                    teximgnode.image = teximage
+                    setup_material_nodes(
+                        mat, blend_method, teximage, self._vcol_material_mode
+                    )
 
                     if self._matsettings_materials_to_reuse is not None:
                         self._matsettings_materials_to_reuse[this_matsettings] = mat
@@ -289,6 +284,72 @@ def find_principled_bsdf_node(mat: Material) -> Optional[ShaderNodeBsdfPrinciple
     else:
         raise RuntimeError("Newly created material has no Principled BSDF node")
     return pbsdfnode
+
+
+def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mode):
+    mat.use_nodes = True
+    pbsdfnode = find_principled_bsdf_node(mat)
+    pbsdf_x, pbsdf_y = pbsdfnode.location
+
+    teximgnode = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    teximgnode.image = teximage
+
+    if vcol_material_mode == "NONE":
+        # place Image Texture node to left of Principled BSDF node & connect
+        teximgnode.location = pbsdf_x - 290, pbsdf_y
+        mat.node_tree.links.new(
+            teximgnode.outputs["Color"], pbsdfnode.inputs["Base Color"]
+        )
+
+        # Don't link transparent texture alpha if we've got an opaque material (or close
+        # enough to opaque, below ALPHA_OPAQUE_CUTOFF). Otherwise, glTF may have sorting
+        # problems when exported from Blender 4.2+
+        if blend_method in ("BLEND", "CLIP"):
+            mat.node_tree.links.new(
+                teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
+            )
+    else:  # RGB, RGBA
+        # place a Color Multiply node to left of PBSDF node & connect
+        colormultnode = mat.node_tree.nodes.new("ShaderNodeMix")
+        colormultnode.label = "Mix Vertex Color"
+        colormultnode.location = pbsdf_x - 240, pbsdf_y
+        colormultnode.data_type = "RGBA"
+        colormultnode.blend_type = "MULTIPLY"
+        colormultnode.inputs["Factor"].default_value = 1.0
+        mat.node_tree.links.new(
+            colormultnode.outputs["Result"], pbsdfnode.inputs["Base Color"]
+        )
+
+        # place the Image Texture node to left of Color Multiply node & connect
+        teximgnode.location = pbsdf_x - 580, pbsdf_y
+        mat.node_tree.links.new(
+            teximgnode.outputs["Color"], colormultnode.inputs["A"]
+        )
+
+        # place a Color Attribute node to left-down of Color multiply node & connect
+        colorattrnode = mat.node_tree.nodes.new("ShaderNodeVertexColor")
+        colorattrnode.location = pbsdf_x - 480, pbsdf_y - 290
+        mat.node_tree.links.new(
+            colorattrnode.outputs["Color"], colormultnode.inputs["B"]
+        )
+
+        # Again, don't link alphas if we've got an opaque-enough material
+        if vcol_material_mode == "RGBA" and blend_method in ("BLEND", "CLIP"):
+
+            # place Math Multiply to left down of PBSDF node & connect the alphas
+            alphamultnode = mat.node_tree.nodes.new("ShaderNodeMath")
+            alphamultnode.label = "Mix Vertex Color Alpha"
+            alphamultnode.location = pbsdf_x - 240, pbsdf_y - 250
+            alphamultnode.operation = "MULTIPLY"
+            mat.node_tree.links.new(
+                teximgnode.outputs["Alpha"], alphamultnode.inputs[0]
+            )
+            mat.node_tree.links.new(
+                colorattrnode.outputs["Alpha"], alphamultnode.inputs[1]
+            )
+            mat.node_tree.links.new(
+                alphamultnode.outputs[0], pbsdfnode.inputs["Alpha"]
+            )
 
 
 def determine_primlist_blend_method(
