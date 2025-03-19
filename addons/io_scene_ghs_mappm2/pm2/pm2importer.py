@@ -28,6 +28,7 @@ class Pm2Importer:
         bl_name: str = "",
         texdir: Union[str, PathLike[str], None] = None,
         vcol_material_mode: str = "RGBA",
+        ignore_vcolalpha: bool = False,
         matsettings_materials_to_reuse: Optional[dict[MatSettings, Material]] = None,
     ):
         """imports a PM2 model, including any vertex animation
@@ -56,6 +57,7 @@ class Pm2Importer:
                 f"was {vcol_material_mode!r}"
             )
         self._vcol_material_mode = vcol_material_mode
+        self._ignore_vcolalpha = ignore_vcolalpha
 
         self._bpycollection = bpy.context.collection
         self.bl_meshobj = None
@@ -167,7 +169,9 @@ class Pm2Importer:
             primlist_texoffset_trunc = f"{primlist.texture_offset:04x}"[-3:]
             doublesided = primlist.doublesided
             teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
-            blend_method = determine_primlist_blend_method(primlist, teximage)
+            blend_method = determine_primlist_blend_method(
+                primlist, teximage, ignore_vcolalpha=self._ignore_vcolalpha
+            )
             this_matsettings = MatSettings(
                 primlist_texoffset_trunc, doublesided, blend_method
             )
@@ -323,9 +327,7 @@ def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mo
 
         # place the Image Texture node to left of Color Multiply node & connect
         teximgnode.location = pbsdf_x - 580, pbsdf_y
-        mat.node_tree.links.new(
-            teximgnode.outputs["Color"], colormultnode.inputs["A"]
-        )
+        mat.node_tree.links.new(teximgnode.outputs["Color"], colormultnode.inputs["A"])
 
         # place a Color Attribute node to left-down of Color multiply node & connect
         colorattrnode = mat.node_tree.nodes.new("ShaderNodeVertexColor")
@@ -348,13 +350,11 @@ def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mo
             mat.node_tree.links.new(
                 colorattrnode.outputs["Alpha"], alphamultnode.inputs[1]
             )
-            mat.node_tree.links.new(
-                alphamultnode.outputs[0], pbsdfnode.inputs["Alpha"]
-            )
+            mat.node_tree.links.new(alphamultnode.outputs[0], pbsdfnode.inputs["Alpha"])
 
 
 def determine_primlist_blend_method(
-    primlist: PrimList, bpyimage: Optional[Image]
+    primlist: PrimList, bpyimage: Optional[Image], ignore_vcolalpha: bool = False
 ) -> str:
     """return Blender blend_method to use for this primlist
 
@@ -362,11 +362,12 @@ def determine_primlist_blend_method(
     """
     encountered_zero_alpha = False
 
-    # check vertex colors for transparency
-    for prim in primlist:
-        for r, g, b, alpha in prim.colors:
-            if alpha < ALPHA_OPAQUE_CUTOFF:
-                return "BLEND"
+    if not ignore_vcolalpha:
+        # check vertex colors for transparency
+        for prim in primlist:
+            for r, g, b, alpha in prim.colors:
+                if alpha < ALPHA_OPAQUE_CUTOFF:
+                    return "BLEND"
 
     # return early if image is opaque or invalid
     if bpyimage is None or bpyimage.channels < 4:

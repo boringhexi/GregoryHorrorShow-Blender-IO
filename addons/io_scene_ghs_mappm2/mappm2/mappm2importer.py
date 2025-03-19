@@ -38,7 +38,7 @@ class MapPm2Importer:
                 break
 
         # import pm2 files
-        vcol_material_mode = "RGB" if self._vcol_materials else "NONE"
+        vcol_material_mode = "RGBA" if self._vcol_materials else "NONE"
         for i, contentfile in enumerate(mappm2container):
             pm2model = Pm2Model.from_file(contentfile)
             pm2importer = Pm2Importer(
@@ -46,6 +46,7 @@ class MapPm2Importer:
                 bl_name=f"{self.bl_name}_{i:03}",
                 texdir=self.texdir,
                 vcol_material_mode=vcol_material_mode,
+                ignore_vcolalpha=True,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
