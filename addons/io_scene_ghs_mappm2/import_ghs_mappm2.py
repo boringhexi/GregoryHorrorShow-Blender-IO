@@ -9,18 +9,22 @@ from .pm2.pm2model import Pm2Model
 
 
 def load_ghs_mappm2(
-    context, *, filepath, files, ghs_anim_method="DRIVER", vcol_materials=True
+    context, *, filepath, files=None, ghs_anim_method="DRIVER", vcol_materials=True
 ):
-    dirname = os.path.dirname(filepath)
-    for file in files:
-        filepath = os.path.join(dirname, file.name)
-        ext = os.path.splitext(file.name)[1]
+    if files:
+        dirname = os.path.dirname(filepath)
+        filepaths = [os.path.join(dirname, file.name) for file in files]
+    else:
+        filepaths = [filepath]
+
+    for inpath in filepaths:
+        basename = os.path.basename(inpath)
+        bl_name, ext = os.path.splitext(basename)
 
         if ext == ".ghs":
-            texdir, pm2dir, mprdir = find_ghs_import_dirs(filepath)
-            bl_name = file.name
+            texdir, pm2dir, mprdir = find_ghs_import_dirs(inpath)
             ghsimporter = GhsImporter(
-                filepath,
+                inpath,
                 pm2dir,
                 mprdir,
                 texdir,
@@ -31,19 +35,17 @@ def load_ghs_mappm2(
             ghsimporter.import_stuff()
 
         elif ext == ".map-pm2":
-            texdir = find_mappm2_tex_dir(filepath)
-            bl_name = file.name
+            texdir = find_mappm2_tex_dir(inpath)
             mappm2importer = MapPm2Importer(
-                filepath, texdir, bl_name, vcol_materials=vcol_materials
+                inpath, texdir, bl_name, vcol_materials=vcol_materials
             )
             mappm2importer.import_mappm2()
 
         elif ext == ".pm2":
-            with open(filepath, "rb") as fp:
+            with open(inpath, "rb") as fp:
                 pm2model = Pm2Model.from_file(fp)
 
-            bl_name = os.path.splitext(file.name)[0]
-            vcol_material_mode = ("RGBA" if vcol_materials else "NONE")
+            vcol_material_mode = "RGBA" if vcol_materials else "NONE"
             pm2importer = Pm2Importer(
                 pm2model, bl_name=bl_name, vcol_material_mode=vcol_material_mode
             )

@@ -48,7 +48,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
     bl_options = {"REGISTER", "UNDO"}
 
     filter_glob: StringProperty(default="*.ghs;*.map-pm2;*.pm2", options={"HIDDEN"})
-    files: CollectionProperty(type=bpy.types.PropertyGroup)
+    files: CollectionProperty(type=bpy.types.OperatorFileListElement)
 
     ghs_anim_method: EnumProperty(
         name="GHS animation",
