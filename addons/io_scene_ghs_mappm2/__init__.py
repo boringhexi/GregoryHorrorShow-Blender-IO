@@ -95,6 +95,8 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         default="DRIVER",
     )
 
+    pm2_texdir: StringProperty(default="")
+
     vcol_materials: BoolProperty(
         name="Vertex color materials",
         description="Makes vertex colors visible via material node setup. "

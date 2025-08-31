@@ -38,7 +38,8 @@ class Pm2Importer:
 
         :param pm2model: pm2 model to import
         :param bl_name: what to name this mesh in Blender. Also used to name materials
-        :param texdir: if provided, path to directory containing textures to load
+        :param texdir: if provided, path to directory containing textures to load. An
+            empty string has the same effect as None, i.e. will not load textures.
         :param vcol_material_mode: one of "RGBA", "RGB", or "NONE". Whether to include
             vertex colors in the materials
         :param matsettings_materials_to_reuse: if provided, a mapping of MatSettings to
@@ -48,7 +49,7 @@ class Pm2Importer:
         """
         self.pm2model = pm2model
         self.bl_name = bl_name
-        self._texdir = Path(texdir) if texdir is not None else None
+        self._texdir = Path(texdir) if texdir else None
         self._matsettings_materials_to_reuse = matsettings_materials_to_reuse
 
         if vcol_material_mode not in ("RGBA", "RGB", "NONE"):

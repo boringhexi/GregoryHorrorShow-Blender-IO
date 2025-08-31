@@ -9,7 +9,13 @@ from .pm2.pm2model import Pm2Model
 
 
 def load_ghs_mappm2(
-    context, *, filepath, files=None, ghs_anim_method="DRIVER", vcol_materials=True
+    context,
+    *,
+    filepath,
+    files=None,
+    ghs_anim_method="DRIVER",
+    pm2_texdir="",
+    vcol_materials=True
 ):
     if files:
         dirname = os.path.dirname(filepath)
@@ -47,7 +53,10 @@ def load_ghs_mappm2(
 
             vcol_material_mode = "RGBA" if vcol_materials else "NONE"
             pm2importer = Pm2Importer(
-                pm2model, bl_name=bl_name, vcol_material_mode=vcol_material_mode
+                pm2model,
+                bl_name=bl_name,
+                texdir=pm2_texdir,
+                vcol_material_mode=vcol_material_mode,
             )
             pm2importer.import_scene()
 
