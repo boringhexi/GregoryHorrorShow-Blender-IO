@@ -54,6 +54,8 @@ def load_ghs_mappm2(
             # also needs to be rotated to correct axes
             pm2meshobj = pm2importer.bl_meshobj
             pm2meshobj.rotation_euler = (radians(90), radians(180), 0)
+            # and set as the active object
+            context.view_layer.objects.active = pm2meshobj
             del pm2model, pm2importer
 
         else:
