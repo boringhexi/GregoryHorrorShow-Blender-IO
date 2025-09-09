@@ -50,6 +50,13 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(default="*.ghs;*.map-pm2;*.pm2", options={"HIDDEN"})
     files: CollectionProperty(type=bpy.types.OperatorFileListElement)
 
+    bl_name_override: StringProperty(
+        name="Blender name override",
+        default="",
+        description="Use this value as the name of the imported object(s) instead of"
+        "generating one automatically from the filename",
+    )
+
     ghs_anim_method: EnumProperty(
         name="GHS animation",
         items=[

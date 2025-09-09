@@ -13,6 +13,7 @@ def load_ghs_mappm2(
     *,
     filepath,
     files=None,
+    bl_name_override="",
     ghs_anim_method="DRIVER",
     pm2_texdir="",
     vcol_materials=True
@@ -25,7 +26,11 @@ def load_ghs_mappm2(
 
     for inpath in filepaths:
         basename = os.path.basename(inpath)
-        bl_name, ext = os.path.splitext(basename)
+        if bl_name_override:
+            bl_name = bl_name_override
+            ext = os.path.splitext(basename)[1]
+        else:
+            bl_name, ext = os.path.splitext(basename)
 
         if ext == ".ghs":
             texdir, pm2dir, mprdir = find_ghs_import_dirs(inpath)
