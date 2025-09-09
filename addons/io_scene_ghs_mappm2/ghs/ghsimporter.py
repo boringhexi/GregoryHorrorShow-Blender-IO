@@ -197,7 +197,7 @@ class GhsImporter:
                 pm2model = Pm2Model.from_file(fp)
             pm2importer = Pm2Importer(
                 pm2model,
-                bl_name=f"b{boneidx:02}_p{pm2idx:03x}",
+                bl_name=f"{self.bl_name}_p{pm2idx:02x}",
                 texdir=self.texdir,
                 vcol_material_mode=vcol_material_mode,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
@@ -209,7 +209,7 @@ class GhsImporter:
                 # create scalehide bone for this default body mesh
                 bpy.ops.object.mode_set(mode="EDIT")
                 scalehide_editbone = original_armobj.data.edit_bones.new(
-                    name=f"b{boneidx:02}_p{pm2idx:03x}_hide"
+                    name=f"b{boneidx:02}_p{pm2idx:02x}_hide"
                 )
                 scalehide_editbone.head = (0, 0, 0)
                 scalehide_editbone.tail = (0, 1, 0)
@@ -323,9 +323,8 @@ class GhsImporter:
                     scalehide_bonename,
                 ) in original_default_pm2mesh_to_scalehide_bonename.items():
                     meshcopy = default_pm2mesh.copy()
-                    bboneidx, pm2suffix = meshcopy.name.split("_")
-                    pm2idx = int(pm2suffix.split(".")[0][1:], 16)
-                    meshcopy.name = f"a{animidx:02}_{bboneidx}_p{pm2idx:03x}"
+                    pm2suffix = default_pm2mesh.name[-3:]
+                    meshcopy.name = f"{self.bl_name}_a{animidx:02}_{pm2suffix}"
                     pm2meshobj = bpy.data.objects.new(meshcopy.name, meshcopy)
                     collection.objects.link(pm2meshobj)
                     # skinning once again, weigh entire mesh to the scalehide bone
@@ -549,7 +548,7 @@ class GhsImporter:
                         bpy.ops.object.mode_set(mode="EDIT")
                         if pm2idx is not None and pm2idx >= 0:
                             scalehide_editbone_name = (
-                                f"b{boneidx:02}_p{pm2idx:03x}_hide"
+                                f"b{boneidx:02}_p{pm2idx:02x}_hide"
                             )
                             scalehide_editbone = armobj.data.edit_bones.new(
                                 name=scalehide_editbone_name
@@ -666,9 +665,9 @@ class GhsImporter:
                             with open(pm2path, "rb") as fp:
                                 pm2model = Pm2Model.from_file(fp)
                             if self.anim_method == "SEPARATE_ARMATURES":
-                                pm2name = f"a{animidx:02}_b{boneidx:02}_p{pm2idx:03x}"
+                                pm2name = f"{self.bl_name}_a{animidx:02}_p{pm2idx:02x}"
                             else:
-                                pm2name = f"b{boneidx:02}_p{pm2idx:03x}"
+                                pm2name = f"{self.bl_name}_p{pm2idx:02x}"
                             pm2importer = Pm2Importer(
                                 pm2model,
                                 bl_name=pm2name,
@@ -705,7 +704,7 @@ class GhsImporter:
                                     # Create and parent driver bone
                                     bpy.ops.object.mode_set(mode="EDIT")
                                     driver_editbone = armobj.data.edit_bones.new(
-                                        name=f"b{boneidx:02}_p{pm2idx:03x}_driver"
+                                        name=f"b{boneidx:02}_p{pm2idx:02x}_driver"
                                     )
                                     driver_editbone.head = (0, 0, 0)
                                     driver_editbone.tail = (0, 1, 0)
