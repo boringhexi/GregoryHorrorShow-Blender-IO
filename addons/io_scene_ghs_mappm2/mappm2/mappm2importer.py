@@ -1,7 +1,6 @@
 from math import radians
 from pathlib import Path
 
-import bpy
 from bpy.types import Material
 
 from ..pm2.pm2importer import MatSettings, Pm2Importer
@@ -25,17 +24,6 @@ class MapPm2Importer:
     def import_mappm2(self):
         with open(self.mappm2path, "rb") as file:
             mappm2container = MapPm2Container.from_file(file)
-
-        # create new collection
-        collection_name = self.bl_name
-        collection = bpy.data.collections.new(collection_name)
-        collection_name = collection.name
-        bpy.context.scene.collection.children.link(collection)
-        # activate new collection
-        for lc in bpy.context.view_layer.layer_collection.children:
-            if lc.name == collection_name:
-                bpy.context.view_layer.active_layer_collection = lc
-                break
 
         # import pm2 files
         vcol_material_mode = "RGBA" if self._vcol_materials else "NONE"
