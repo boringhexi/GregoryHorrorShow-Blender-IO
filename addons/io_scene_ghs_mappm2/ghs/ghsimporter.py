@@ -140,7 +140,7 @@ class GhsImporter:
                 mprs.append(mpr)
 
         # create armature
-        original_armdata = bpy.data.armatures.new(f"{self.bl_name}_arm")
+        original_armdata = bpy.data.armatures.new(self.bl_name)
         original_armobj = bpy.data.objects.new(original_armdata.name, original_armdata)
         bpy.context.collection.objects.link(original_armobj)
         bpy.context.view_layer.objects.active = original_armobj
@@ -302,7 +302,7 @@ class GhsImporter:
                 # copy existing armature to use as a base
                 # (must copy both obj and data, since obj contains pose)
                 armobj = original_armobj.copy()
-                armobj.name = f"{self.bl_name}_a{animidx:02}_arm"
+                armobj.name = f"{self.bl_name}_a{animidx:02}"
                 armdata = original_armdata.copy()
                 armdata.name = armobj.name
                 armobj.data = armdata
