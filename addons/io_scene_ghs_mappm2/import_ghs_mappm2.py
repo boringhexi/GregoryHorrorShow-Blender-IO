@@ -46,6 +46,8 @@ def load_ghs_mappm2(
             ghsimporter.import_stuff()
 
         elif ext == ".map-pm2":
+            if not bl_name_override:
+                bl_name = f"{bl_name}_"
             texdir = find_mappm2_tex_dir(inpath)
             mappm2importer = MapPm2Importer(
                 inpath, texdir, bl_name, vcol_materials=vcol_materials

@@ -43,7 +43,7 @@ class MapPm2Importer:
             pm2model = Pm2Model.from_file(contentfile)
             pm2importer = Pm2Importer(
                 pm2model,
-                bl_name=f"{self.bl_name}_{i:03}",
+                bl_name=f"{self.bl_name}{i:03}",
                 texdir=self.texdir,
                 vcol_material_mode=vcol_material_mode,
                 ignore_vcolalpha=True,
