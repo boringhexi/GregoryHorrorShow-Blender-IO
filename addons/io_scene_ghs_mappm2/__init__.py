@@ -96,7 +96,12 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         default="DRIVER",
     )
 
-    pm2_texdir: StringProperty(default="")
+    pm2_texdir: StringProperty(
+        name="PM2 texture directory",
+        description="When importing standalone PM2 files, load textures from this "
+        "directory. Otherwise no textures will be loaded",
+        default="",
+    )
 
     vcol_materials: BoolProperty(
         name="Vertex color materials",
