@@ -195,12 +195,12 @@ class Pm2Importer:
 
                     # set some material settings
                     mat.use_backface_culling = not doublesided
-                    if hasattr(mat, "surface_render_method"):
+                    if hasattr(mat, "surface_render_method"): # Blender 4.4+
                         if blend_method in ("OPAQUE", "CLIP"):
                             mat.surface_render_method = "DITHERED"
                         else:
                             mat.surface_render_method = "BLENDED"
-                    else:
+                    if hasattr(mat, "blend_method"):  # Blender 4.3 and earlier
                         mat.blend_method = blend_method
                     if hasattr(mat, "use_transparency_overlap"):
                         mat.use_transparency_overlap = False
