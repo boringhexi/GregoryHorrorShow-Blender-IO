@@ -195,7 +195,7 @@ class Pm2Importer:
 
                     # set some material settings
                     mat.use_backface_culling = not doublesided
-                    if hasattr(mat, "surface_render_method"): # Blender 4.4+
+                    if hasattr(mat, "surface_render_method"):  # Blender 4.4+
                         if blend_method in ("OPAQUE", "CLIP"):
                             mat.surface_render_method = "DITHERED"
                         else:
@@ -302,21 +302,22 @@ def setup_material_nodes(
     teximgnode.image = teximage
 
     if not vcol_materials:
-        # place Image Texture node to left of Principled BSDF node & connect
+        # place Image Texture node to left of Principled BSDF node & connect them
         teximgnode.location = pbsdf_x - 290, pbsdf_y
         mat.node_tree.links.new(
             teximgnode.outputs["Color"], pbsdfnode.inputs["Base Color"]
         )
 
-        # Don't link transparent texture alpha if we've got an opaque material (or close
-        # enough to opaque, below ALPHA_OPAQUE_CUTOFF). Otherwise, glTF may have sorting
-        # problems when exported from Blender 4.2+
+        # Then connect their alphas as well
+        # (Don't link transparent texture alpha if we've got an opaque material (or
+        # close enough to opaque, below ALPHA_OPAQUE_CUTOFF). Otherwise, glTF may have
+        # sorting problems when exported from Blender 4.2+)
         if blend_method in ("BLEND", "CLIP"):
             mat.node_tree.links.new(
                 teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
             )
     else:
-        # place a Color Multiply node to left of PBSDF node & connect
+        # place a Color Multiply node to left of PBSDF node & connect them
         colormultnode = mat.node_tree.nodes.new("ShaderNodeMix")
         colormultnode.label = "Mix Vertex Color"
         colormultnode.location = pbsdf_x - 240, pbsdf_y
@@ -327,31 +328,40 @@ def setup_material_nodes(
             colormultnode.outputs["Result"], pbsdfnode.inputs["Base Color"]
         )
 
-        # place the Image Texture node to left of Color Multiply node & connect
+        # place the Image Texture node to left of Color Multiply node & connect them
         teximgnode.location = pbsdf_x - 580, pbsdf_y
         mat.node_tree.links.new(teximgnode.outputs["Color"], colormultnode.inputs["A"])
 
-        # place a Color Attribute node to left-down of Color multiply node & connect
+        # place a Color Attribute node to left-down of Color multiply node & connect em
         colorattrnode = mat.node_tree.nodes.new("ShaderNodeVertexColor")
         colorattrnode.location = pbsdf_x - 480, pbsdf_y - 290
         mat.node_tree.links.new(
             colorattrnode.outputs["Color"], colormultnode.inputs["B"]
         )
 
-        # Again, don't link alphas if we've got an opaque-enough material
-        if import_vcol_alpha and blend_method in ("BLEND", "CLIP"):
-            # place Math Multiply to left down of PBSDF node & connect the alphas
-            alphamultnode = mat.node_tree.nodes.new("ShaderNodeMath")
-            alphamultnode.label = "Mix Vertex Color Alpha"
-            alphamultnode.location = pbsdf_x - 240, pbsdf_y - 250
-            alphamultnode.operation = "MULTIPLY"
-            mat.node_tree.links.new(
-                teximgnode.outputs["Alpha"], alphamultnode.inputs[0]
-            )
-            mat.node_tree.links.new(
-                colorattrnode.outputs["Alpha"], alphamultnode.inputs[1]
-            )
-            mat.node_tree.links.new(alphamultnode.outputs[0], pbsdfnode.inputs["Alpha"])
+        # (Again, don't link alphas if we've got an opaque-enough material)
+        if blend_method in ("BLEND", "CLIP"):
+            if import_vcol_alpha:
+                # place Math Multiply to left down of PBSDF node, then connect the color
+                # attribute's & texture node's alphas through it to the PBSDF node
+                alphamultnode = mat.node_tree.nodes.new("ShaderNodeMath")
+                alphamultnode.label = "Mix Vertex Color Alpha"
+                alphamultnode.location = pbsdf_x - 240, pbsdf_y - 250
+                alphamultnode.operation = "MULTIPLY"
+                mat.node_tree.links.new(
+                    teximgnode.outputs["Alpha"], alphamultnode.inputs[0]
+                )
+                mat.node_tree.links.new(
+                    colorattrnode.outputs["Alpha"], alphamultnode.inputs[1]
+                )
+                mat.node_tree.links.new(
+                    alphamultnode.outputs[0], pbsdfnode.inputs["Alpha"]
+                )
+            else:
+                # no Math Multiply node, just link the texture alpha directly to PBSDF
+                mat.node_tree.links.new(
+                    teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
+                )
 
 
 def determine_primlist_blend_method(
