@@ -86,12 +86,6 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
                 "exporting to Unity",
             ),
             (
-                "SEPARATE_ARMATURES",
-                "Separate armatures",
-                "Creates a new armature for each animation. Suitable for exporting "
-                "each animation to a separate file",
-            ),
-            (
                 "TPOSE",
                 "T-Pose approx",
                 "Approximates a good-enough T-Pose (by using only default model parts, "

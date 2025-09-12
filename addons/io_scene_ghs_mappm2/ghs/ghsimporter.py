@@ -100,7 +100,7 @@ class GhsImporter:
         :param anim_method: one of str: "1LONG" (all in a single timeline animation),
         "1LONG_EVERY100" (single timeline animation, each animation begins on a multiple
         of 100 frames), "DRIVER" (separate animations, uses a driver bone to drive shape
-        keys), or "SEPARATE_ARMATURES" (each animation gets a separate armature)
+        keys), or "TPOSE" (attempts to create a T-pose from the first animation)
         :param bl_name:
         :param vcol_materials: if True, setup vertex color materials
         """
@@ -114,7 +114,6 @@ class GhsImporter:
             "GLTF",
             "1LONG",
             "1LONG_EVERY100",
-            "SEPARATE_ARMATURES",
             "TPOSE",
         ):
             raise ValueError(f"Unknown anim_method {anim_method!r}")
@@ -140,23 +139,23 @@ class GhsImporter:
                 mprs.append(mpr)
 
         # create armature
-        original_armdata = bpy.data.armatures.new(self.bl_name)
-        original_armobj = bpy.data.objects.new(original_armdata.name, original_armdata)
-        bpy.context.collection.objects.link(original_armobj)
-        bpy.context.view_layer.objects.active = original_armobj
+        armdata = bpy.data.armatures.new(self.bl_name)
+        armobj = bpy.data.objects.new(armdata.name, armdata)
+        bpy.context.collection.objects.link(armobj)
+        bpy.context.view_layer.objects.active = armobj
         # rotate it to correct the axes
-        original_armobj.rotation_euler = (radians(90), radians(180), 0)
+        armobj.rotation_euler = (radians(90), radians(180), 0)
 
         # create bones, set bone properties, and populate a mapping for later...
         boneidx_to_bonename = dict()
         for boneidx, boneparentdata in enumerate(boneparentinfo):
             bpy.ops.object.mode_set(mode="EDIT")
-            bpyeditbone = original_armdata.edit_bones.new(name=f"b{boneidx:02}")
+            bpyeditbone = armdata.edit_bones.new(name=f"b{boneidx:02}")
             bpyeditbone.tail = Vector((0, 1, 0))
             boneidx_to_bonename[boneidx] = bpyeditbone.name
             posebone_name = bpyeditbone.name
             bpy.ops.object.mode_set(mode="POSE")
-            posebone = original_armobj.pose.bones[posebone_name]
+            posebone = armobj.pose.bones[posebone_name]
             posebone.location = Vector(
                 (
                     boneparentdata["posx"],
@@ -172,8 +171,8 @@ class GhsImporter:
                 continue
             bpybonename = boneidx_to_bonename[boneidx]
             bpyparentname = boneidx_to_bonename[parentidx]
-            bpyeditbone = original_armdata.edit_bones[bpybonename]
-            bpyparenteditbone = original_armdata.edit_bones[bpyparentname]
+            bpyeditbone = armdata.edit_bones[bpybonename]
+            bpyparenteditbone = armdata.edit_bones[bpyparentname]
             bpyeditbone.parent = bpyparenteditbone
 
         # load default pm2 body parts
@@ -208,22 +207,22 @@ class GhsImporter:
             if self.anim_method != "TPOSE":
                 # create scalehide bone for this default body mesh
                 bpy.ops.object.mode_set(mode="EDIT")
-                scalehide_editbone = original_armobj.data.edit_bones.new(
+                scalehide_editbone = armobj.data.edit_bones.new(
                     name=f"b{boneidx:02}_p{pm2idx:02x}_hide"
                 )
                 scalehide_editbone.head = (0, 0, 0)
                 scalehide_editbone.tail = (0, 1, 0)
                 parent_bonename = boneidx_to_bonename[boneidx]
-                parent_editbone = original_armobj.data.edit_bones[parent_bonename]
+                parent_editbone = armobj.data.edit_bones[parent_bonename]
                 scalehide_editbone.parent = parent_editbone
                 scalehide_bonename = scalehide_editbone.name
                 pm2idx_to_scalehidebone[pm2idx] = scalehide_bonename
                 # Skinning, weigh entire mesh to the scalehide bone.
                 # (Bone parenting could work, except several exporters choke on that)
                 bpy.ops.object.mode_set(mode="POSE")
-                pm2meshobj.parent = original_armobj
+                pm2meshobj.parent = armobj
                 arm_modifier = pm2meshobj.modifiers.new("Armature", "ARMATURE")
-                arm_modifier.object = original_armobj
+                arm_modifier.object = armobj
                 num_verts = len(pm2meshobj.data.vertices)
                 pm2meshobj.vertex_groups.new(name=scalehide_bonename)
                 pm2meshobj.vertex_groups[scalehide_bonename].add(
@@ -244,9 +243,9 @@ class GhsImporter:
                 bpy.ops.object.mode_set(mode="POSE")
                 boneidx_bonename = boneidx_to_bonename[boneidx]
                 # skinning, weigh entire mesh to the boneidx bone
-                pm2meshobj.parent = original_armobj
+                pm2meshobj.parent = armobj
                 arm_modifier = pm2meshobj.modifiers.new("Armature", "ARMATURE")
-                arm_modifier.object = original_armobj
+                arm_modifier.object = armobj
                 num_verts = len(pm2meshobj.data.vertices)
                 if boneidx_bonename not in pm2meshobj.vertex_groups:
                     pm2meshobj.vertex_groups.new(name=boneidx_bonename)
@@ -254,11 +253,6 @@ class GhsImporter:
                     range(num_verts), 1, "ADD"
                 )
         bpy.ops.object.mode_set(mode="OBJECT")
-
-        if self.anim_method in ("DRIVER", "GLTF", "1LONG", "1LONG_EVERY100", "TPOSE"):
-            armobj = original_armobj
-        else:  # elif self.anim_method = "SEPARATE_ARMATURES"
-            armobj = None
 
         # get each anim's full length in advance by checking its mpr and keyframes.
         # it's used later for 1LONG anim concatenation and Action/NLA strip length.
@@ -286,63 +280,6 @@ class GhsImporter:
         for animidx, (anim, mpr) in enumerate(zip(anims, mprs)):
             full_anim_len = fullanimlengths[animidx]
             is_last_animation = animidx + 1 == len(anims)
-
-            if self.anim_method == "SEPARATE_ARMATURES":
-                # create new collection
-                collection_name = f"{self.bl_name}_anim{animidx:02}"
-                collection = bpy.data.collections.new(collection_name)
-                collection_name = collection.name
-                bpy.context.scene.collection.children.link(collection)
-                # activate new collection
-                for lc in bpy.context.view_layer.layer_collection.children:
-                    if lc.name == collection_name:
-                        bpy.context.view_layer.active_layer_collection = lc
-                        break
-
-                # copy existing armature to use as a base
-                # (must copy both obj and data, since obj contains pose)
-                armobj = original_armobj.copy()
-                armobj.name = f"{self.bl_name}_a{animidx:02}"
-                armdata = original_armdata.copy()
-                armdata.name = armobj.name
-                armobj.data = armdata
-                collection.objects.link(armobj)
-                bpy.context.view_layer.objects.active = armobj
-                # rotate it to correct the axes
-                armobj.rotation_euler = (radians(90), radians(180), 0)
-
-                # reset this mapping, don't want to reuse non-default pm2 meshes between
-                # animations
-                pm2idx_to_meshobj = dict()
-
-                # copy default pm2 meshes as well
-                # and parent them to respective scalehide bones
-                default_scalehide_bonename_to_pm2mesh = dict()
-                for (
-                    default_pm2mesh,
-                    scalehide_bonename,
-                ) in original_default_pm2mesh_to_scalehide_bonename.items():
-                    meshcopy = default_pm2mesh.copy()
-                    pm2suffix = default_pm2mesh.name[-3:]
-                    meshcopy.name = f"{self.bl_name}_a{animidx:02}_{pm2suffix}"
-                    pm2meshobj = bpy.data.objects.new(meshcopy.name, meshcopy)
-                    collection.objects.link(pm2meshobj)
-                    # skinning once again, weigh entire mesh to the scalehide bone
-                    pm2meshobj.parent = armobj
-                    arm_modifier = pm2meshobj.modifiers.new("Armature", "ARMATURE")
-                    arm_modifier.object = armobj
-                    num_verts = len(pm2meshobj.data.vertices)
-                    pm2meshobj.vertex_groups.new(name=scalehide_bonename)
-                    pm2meshobj.vertex_groups[scalehide_bonename].add(
-                        range(num_verts), 1, "ADD"
-                    )
-                    # update important mesh mappings
-                    pm2idx_to_meshobj[pm2idx] = pm2meshobj
-                    default_scalehide_bonename_to_pm2mesh[scalehide_bonename] = (
-                        pm2meshobj.data
-                    )
-
-                made_copies = True
 
             # Clear out the previous animation's actions
             if self.anim_method in ("DRIVER", "GLTF"):
@@ -427,7 +364,7 @@ class GhsImporter:
             # this_anim_length = full_anim_len
 
             if (
-                self.anim_method in ("DRIVER", "GLTF", "SEPARATE_ARMATURES")
+                self.anim_method in ("DRIVER", "GLTF")
                 and armobj.animation_data is not None
             ):
                 bpyaction: Action = armobj.animation_data.action
@@ -439,11 +376,10 @@ class GhsImporter:
                 bpy_nla_strip = bpy_nla_track.strips.new(anim_name, 0, bpyaction)
                 bpy_nla_strip.name = anim_name  # because it didn't stick the first time
                 bpy_nla_strip.action_frame_end = this_anim_length
-                if self.anim_method != "SEPARATE_ARMATURES":
-                    # lock and mute all NLA tracks, just like the glTF importer. This
-                    # way an animation only plays when it is starred/solo'd in the GUI
-                    bpy_nla_track.mute = True
-                    bpy_nla_track.lock = True
+                # lock and mute all NLA tracks, just like the glTF importer. This
+                # way an animation only plays when it is starred/solo'd in the GUI
+                bpy_nla_track.mute = True
+                bpy_nla_track.lock = True
 
             this_anim_start_frame = next_anim_start_frame
             next_anim_start_frame = 0
@@ -664,10 +600,7 @@ class GhsImporter:
                             pm2path = self.pm2dir / f"{pm2idx:03x}.pm2"
                             with open(pm2path, "rb") as fp:
                                 pm2model = Pm2Model.from_file(fp)
-                            if self.anim_method == "SEPARATE_ARMATURES":
-                                pm2name = f"{self.bl_name}_a{animidx:02}_p{pm2idx:02x}"
-                            else:
-                                pm2name = f"{self.bl_name}_p{pm2idx:02x}"
+                            pm2name = f"{self.bl_name}_p{pm2idx:02x}"
                             pm2importer = Pm2Importer(
                                 pm2model,
                                 bl_name=pm2name,
@@ -817,34 +750,14 @@ class GhsImporter:
             if self.anim_method in (
                 "1LONG",
                 "1LONG_EVERY100",
-                "SEPARATE_ARMATURES",
                 "GLTF",
             ):
                 for skaction in shapekeyactions:
                     set_action_interpolation(skaction)
-            if (
-                self.anim_method == "SEPARATE_ARMATURES"
-                and armobj.animation_data is not None
-            ):
-                # set frame-by-frame visibility of each default pm2's scalehide bone
-                # and other fcurve set/cleanup
-                bpyaction: Action = armobj.animation_data.action
-                set_action_interpolation(bpyaction)
-                simplify_scalehide_fcurves(bpyaction)
-                self.set_default_scalehide_bones_visibility(
-                    boneidx_to_default_scalehide_bonename,
-                    boneidx_to_scalehide_bones,
-                    bpyaction,
-                )
-                set_action_interpolation(bpyaction)
-                delete_unused_default_pm2meshes(
-                    default_scalehide_bonename_to_pm2mesh, armobj
-                )
-                delete_deleteme_bones(deleteme_bonenames, armobj)
 
             # Now that an anim is done, group the armature and shapekey anims together
             # by putting them in NLA tracks with the same name.
-            if self.anim_method in ("GLTF", "SEPARATE_ARMATURES"):
+            if self.anim_method == "GLTF":
                 for shape_keys in animated_shapekeys:
                     skaction: Action = shape_keys.animation_data.action
                     if skaction is None:
@@ -860,17 +773,16 @@ class GhsImporter:
                     bpy_nla_strip.action_frame_end = min(
                         action_last_frame, this_anim_length
                     )
-                    if self.anim_method == "GLTF":
-                        if action_last_frame > this_anim_length:
-                            # Set manual frame range if action is too long
-                            skaction.use_frame_range = True
-                            skaction.frame_range = (0, this_anim_length)
 
-                    if self.anim_method != "SEPARATE_ARMATURES":
-                        # lock and mute all NLA tracks,just like the glTF importer. This
-                        # way an anim only plays when it is starred/solo'd in the GUI
-                        bpy_nla_track.mute = True
-                        bpy_nla_track.lock = True
+                    if action_last_frame > this_anim_length:
+                        # Set manual frame range if action is too long
+                        skaction.use_frame_range = True
+                        skaction.frame_range = (0, this_anim_length)
+
+                    # lock and mute all NLA tracks,just like the glTF importer. This
+                    # way an anim only plays when it is starred/solo'd in the GUI
+                    bpy_nla_track.mute = True
+                    bpy_nla_track.lock = True
 
         if self.anim_method in ("DRIVER", "GLTF"):
             # scale to 0 all scalehide bones not in the current animation
@@ -936,7 +848,7 @@ class GhsImporter:
             # set frame-by-frame visibility of each default pm2's scalehide bone
             # and other fcurve set/cleanup
             if armobj.animation_data is not None:
-                bpyaction = original_armobj.animation_data.action
+                bpyaction = armobj.animation_data.action
                 set_action_interpolation(bpyaction)
                 simplify_scalehide_fcurves(bpyaction)
                 self.set_default_scalehide_bones_visibility(
@@ -959,12 +871,6 @@ class GhsImporter:
                 shape_keys.animation_data.action = None
 
         bpy.ops.object.mode_set(mode="OBJECT")
-        if self.anim_method == "SEPARATE_ARMATURES" and made_copies:
-            # delete the original armature, we made copies of it but aren't using it
-            bpy.data.armatures.remove(original_armdata)
-            # same with the original default body part meshes
-            for default_pm2mesh in original_default_pm2mesh_to_scalehide_bonename:
-                bpy.data.meshes.remove(default_pm2mesh)
 
     def set_default_scalehide_bones_visibility(
         self,
