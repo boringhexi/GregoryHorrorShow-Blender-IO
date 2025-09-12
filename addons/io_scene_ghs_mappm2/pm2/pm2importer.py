@@ -290,6 +290,12 @@ def find_principled_bsdf_node(mat: Material) -> Optional[ShaderNodeBsdfPrinciple
     return pbsdfnode
 
 
+def find_enabled_socket(sockets, name):
+    for socket in sockets:
+        if socket.name == name and socket.enabled:
+            return socket
+
+
 def setup_material_nodes(
     mat: Material, blend_method, teximage, vcol_materials, import_vcol_alpha
 ):
@@ -323,20 +329,25 @@ def setup_material_nodes(
         colormultnode.location = pbsdf_x - 240, pbsdf_y
         colormultnode.data_type = "RGBA"
         colormultnode.blend_type = "MULTIPLY"
-        colormultnode.inputs["Factor"].default_value = 1.0
+        # In some older Blender versions, ColorMult has multiple Factor, Result, A, & B
+        find_enabled_socket(colormultnode.inputs, "Factor").default_value = 1.0
         mat.node_tree.links.new(
-            colormultnode.outputs["Result"], pbsdfnode.inputs["Base Color"]
+            find_enabled_socket(colormultnode.outputs, "Result"),
+            pbsdfnode.inputs["Base Color"],
         )
 
         # place the Image Texture node to left of Color Multiply node & connect them
         teximgnode.location = pbsdf_x - 580, pbsdf_y
-        mat.node_tree.links.new(teximgnode.outputs["Color"], colormultnode.inputs["A"])
+        mat.node_tree.links.new(
+            teximgnode.outputs["Color"], find_enabled_socket(colormultnode.inputs, "A")
+        )
 
         # place a Color Attribute node to left-down of Color multiply node & connect em
         colorattrnode = mat.node_tree.nodes.new("ShaderNodeVertexColor")
         colorattrnode.location = pbsdf_x - 480, pbsdf_y - 290
         mat.node_tree.links.new(
-            colorattrnode.outputs["Color"], colormultnode.inputs["B"]
+            colorattrnode.outputs["Color"],
+            find_enabled_socket(colormultnode.inputs, "B"),
         )
 
         roundnode_y = pbsdf_y - 420
@@ -378,12 +389,8 @@ def setup_material_nodes(
                         roundnode_y,
                     )
                     roundnode.operation = "ROUND"
-                    mat.node_tree.links.new(
-                        link.from_socket, roundnode.inputs[0]
-                    )
-                    mat.node_tree.links.new(
-                        roundnode.outputs[0], link.to_socket
-                    )
+                    mat.node_tree.links.new(link.from_socket, roundnode.inputs[0])
+                    mat.node_tree.links.new(roundnode.outputs[0], link.to_socket)
                     break
 
 
