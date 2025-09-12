@@ -195,12 +195,12 @@ class Pm2Importer:
 
                     # set some material settings
                     mat.use_backface_culling = not doublesided
-                    if hasattr(mat, "surface_render_method"):  # Blender 4.4+
+                    if hasattr(mat, "surface_render_method"):  # Blender 4.2+
                         if blend_method in ("OPAQUE", "CLIP"):
                             mat.surface_render_method = "DITHERED"
                         else:
                             mat.surface_render_method = "BLENDED"
-                    if hasattr(mat, "blend_method"):  # Blender 4.3 and earlier
+                    if hasattr(mat, "blend_method"):  # Blender 4.1 and earlier
                         mat.blend_method = blend_method
                     if hasattr(mat, "use_transparency_overlap"):
                         mat.use_transparency_overlap = False
@@ -339,6 +339,8 @@ def setup_material_nodes(
             colorattrnode.outputs["Color"], colormultnode.inputs["B"]
         )
 
+        roundnode_y = pbsdf_y - 420
+
         # (Again, don't link alphas if we've got an opaque-enough material)
         if blend_method in ("BLEND", "CLIP"):
             if import_vcol_alpha:
@@ -362,6 +364,27 @@ def setup_material_nodes(
                 mat.node_tree.links.new(
                     teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
                 )
+                roundnode_y = pbsdf_y - 290
+
+        # hacky way to tell if we're on Blender 4.2+ and need to reimplement alpha clip
+        must_reimplement_alpha_clip = hasattr(mat, "use_transparency_overlap")
+        if blend_method == "CLIP" and must_reimplement_alpha_clip:
+            # put a Round math node before PBSDF alpha if anything connects to it
+            for link in mat.node_tree.links:
+                if link.to_socket == pbsdfnode.inputs["Alpha"]:
+                    roundnode = mat.node_tree.nodes.new("ShaderNodeMath")
+                    roundnode.location = (
+                        pbsdf_x - 240,
+                        roundnode_y,
+                    )
+                    roundnode.operation = "ROUND"
+                    mat.node_tree.links.new(
+                        link.from_socket, roundnode.inputs[0]
+                    )
+                    mat.node_tree.links.new(
+                        roundnode.outputs[0], link.to_socket
+                    )
+                    break
 
 
 def determine_primlist_blend_method(
