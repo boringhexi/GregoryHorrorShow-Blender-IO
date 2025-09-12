@@ -16,7 +16,8 @@ def load_ghs_mappm2(
     bl_name_override="",
     ghs_anim_method="DRIVER",
     pm2_texdir="",
-    vcol_materials=True
+    vcol_materials=True,
+    vcol_alpha="AUTO",
 ):
     if files:
         dirname = os.path.dirname(filepath)
@@ -34,6 +35,7 @@ def load_ghs_mappm2(
 
         if ext == ".ghs":
             texdir, pm2dir, mprdir = find_ghs_import_dirs(inpath)
+            import_vcol_alpha = vcol_alpha in ("AUTO", "IMPORT")  # if AUTO, import
             ghsimporter = GhsImporter(
                 inpath,
                 pm2dir,
@@ -42,6 +44,7 @@ def load_ghs_mappm2(
                 bl_name,
                 anim_method=ghs_anim_method,
                 vcol_materials=vcol_materials,
+                import_vcol_alpha=import_vcol_alpha,
             )
             ghsimporter.import_stuff()
 
@@ -49,21 +52,26 @@ def load_ghs_mappm2(
             if not bl_name_override:
                 bl_name = f"{bl_name}_"
             texdir = find_mappm2_tex_dir(inpath)
+            import_vcol_alpha = vcol_alpha == "IMPORT"  # if AUTO, ignore
             mappm2importer = MapPm2Importer(
-                inpath, texdir, bl_name, vcol_materials=vcol_materials
+                inpath,
+                texdir,
+                bl_name,
+                vcol_materials=vcol_materials,
+                import_vcol_alpha=import_vcol_alpha,
             )
             mappm2importer.import_mappm2()
 
         elif ext == ".pm2":
+            import_vcol_alpha = vcol_alpha in ("AUTO", "IMPORT")  # if AUTO, import
             with open(inpath, "rb") as fp:
                 pm2model = Pm2Model.from_file(fp)
-
-            vcol_material_mode = "RGBA" if vcol_materials else "NONE"
             pm2importer = Pm2Importer(
                 pm2model,
                 bl_name=bl_name,
                 texdir=pm2_texdir,
-                vcol_material_mode=vcol_material_mode,
+                vcol_materials=vcol_materials,
+                import_vcol_alpha=import_vcol_alpha,
             )
             pm2importer.import_scene()
 

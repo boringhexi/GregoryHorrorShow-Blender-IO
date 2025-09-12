@@ -27,8 +27,8 @@ class Pm2Importer:
         pm2model: Pm2Model,
         bl_name: str = "",
         texdir: Union[str, PathLike[str], None] = None,
-        vcol_material_mode: str = "RGBA",
-        ignore_vcolalpha: bool = False,
+        vcol_materials=True,
+        import_vcol_alpha=True,
         matsettings_materials_to_reuse: Optional[dict[MatSettings, Material]] = None,
     ):
         """imports a PM2 model, including any vertex animation
@@ -40,8 +40,8 @@ class Pm2Importer:
         :param bl_name: what to name this mesh in Blender. Also used to name materials
         :param texdir: if provided, path to directory containing textures to load. An
             empty string has the same effect as None, i.e. will not load textures.
-        :param vcol_material_mode: one of "RGBA", "RGB", or "NONE". Whether to include
-            vertex colors in the materials
+        :param vcol_materials: if True, include vertex colors in the materials
+        :param import_vcol_alpha: if True, import vertex color alpha
         :param matsettings_materials_to_reuse: if provided, a mapping of MatSettings to
             Blender materials. The import process will reuse an existing material if
             its MatSettings is encountered, and the mapping will be updated with any new
@@ -51,14 +51,8 @@ class Pm2Importer:
         self.bl_name = bl_name
         self._texdir = Path(texdir) if texdir else None
         self._matsettings_materials_to_reuse = matsettings_materials_to_reuse
-
-        if vcol_material_mode not in ("RGBA", "RGB", "NONE"):
-            raise ValueError(
-                'vcol_material_mode must be one of "RGBA", "RGB", "NONE", '
-                f"was {vcol_material_mode!r}"
-            )
-        self._vcol_material_mode = vcol_material_mode
-        self._ignore_vcolalpha = ignore_vcolalpha
+        self._vcol_materials = vcol_materials
+        self._import_vcol_alpha = import_vcol_alpha
 
         self._bpycollection = bpy.context.collection
         self.bl_meshobj = None
@@ -115,20 +109,21 @@ class Pm2Importer:
         for primlist in self.pm2model.primlists:
             for prim in primlist:
                 colors.extend(prim.colors)
-        # ...unless all the vertex colors are 100% opaque white (i.e. no visible effect)
-        if any(c != (1, 1, 1, 1) for c in colors):
-            if hasattr(me, "color_attributes"):
-                color_attribute = me.color_attributes.new("", "FLOAT_COLOR", "POINT")
-                color_attribute.data.foreach_set("color", unpack_list(colors))
-            elif hasattr(me, "vertex_colors"):  # Blender 3.0-3.1 compatibility
-                color_layer = me.vertex_colors.new()
-                loop_vcolors = (colors[lo.vertex_index] for lo in me.loops)
-                color_layer.data.foreach_set("color", unpack_list(loop_vcolors))
-            else:
-                raise AttributeError(
-                    "Mesh data has neither `color_attributes` nor `vertex_colors`, "
-                    "can't set vertex colors"
-                )
+        if not self._import_vcol_alpha:
+            colors = ((r, g, b, 1) for r, g, b, a in colors)
+
+        if hasattr(me, "color_attributes"):
+            color_attribute = me.color_attributes.new("", "FLOAT_COLOR", "POINT")
+            color_attribute.data.foreach_set("color", unpack_list(colors))
+        elif hasattr(me, "vertex_colors"):  # Blender 3.0-3.1 compatibility
+            color_layer = me.vertex_colors.new()
+            loop_vcolors = (colors[lo.vertex_index] for lo in me.loops)
+            color_layer.data.foreach_set("color", unpack_list(loop_vcolors))
+        else:
+            raise AttributeError(
+                "Mesh data has neither `color_attributes` nor `vertex_colors`, "
+                "can't set vertex colors"
+            )
 
         # link mesh to Blender scene
         ob = bpy.data.objects.new(me.name, me)
@@ -171,7 +166,7 @@ class Pm2Importer:
             doublesided = primlist.doublesided
             teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
             blend_method = determine_primlist_blend_method(
-                primlist, teximage, ignore_vcolalpha=self._ignore_vcolalpha
+                primlist, teximage, import_vcol_alpha=self._import_vcol_alpha
             )
             this_matsettings = MatSettings(
                 primlist_texoffset_trunc, doublesided, blend_method
@@ -215,7 +210,11 @@ class Pm2Importer:
                     # set up material nodes
                     teximage = self._texoffsets_to_images.get(primlist_texoffset_trunc)
                     setup_material_nodes(
-                        mat, blend_method, teximage, self._vcol_material_mode
+                        mat,
+                        blend_method,
+                        teximage,
+                        self._vcol_materials,
+                        self._import_vcol_alpha,
                     )
 
                     if self._matsettings_materials_to_reuse is not None:
@@ -291,7 +290,9 @@ def find_principled_bsdf_node(mat: Material) -> Optional[ShaderNodeBsdfPrinciple
     return pbsdfnode
 
 
-def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mode):
+def setup_material_nodes(
+    mat: Material, blend_method, teximage, vcol_materials, import_vcol_alpha
+):
     mat.use_nodes = True
     pbsdfnode = find_principled_bsdf_node(mat)
     pbsdfnode.inputs["Roughness"].default_value = 1.0
@@ -300,7 +301,7 @@ def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mo
     teximgnode = mat.node_tree.nodes.new("ShaderNodeTexImage")
     teximgnode.image = teximage
 
-    if vcol_material_mode == "NONE":
+    if not vcol_materials:
         # place Image Texture node to left of Principled BSDF node & connect
         teximgnode.location = pbsdf_x - 290, pbsdf_y
         mat.node_tree.links.new(
@@ -314,7 +315,7 @@ def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mo
             mat.node_tree.links.new(
                 teximgnode.outputs["Alpha"], pbsdfnode.inputs["Alpha"]
             )
-    else:  # RGB, RGBA
+    else:
         # place a Color Multiply node to left of PBSDF node & connect
         colormultnode = mat.node_tree.nodes.new("ShaderNodeMix")
         colormultnode.label = "Mix Vertex Color"
@@ -338,8 +339,7 @@ def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mo
         )
 
         # Again, don't link alphas if we've got an opaque-enough material
-        if vcol_material_mode == "RGBA" and blend_method in ("BLEND", "CLIP"):
-
+        if import_vcol_alpha and blend_method in ("BLEND", "CLIP"):
             # place Math Multiply to left down of PBSDF node & connect the alphas
             alphamultnode = mat.node_tree.nodes.new("ShaderNodeMath")
             alphamultnode.label = "Mix Vertex Color Alpha"
@@ -355,7 +355,7 @@ def setup_material_nodes(mat: Material, blend_method, teximage, vcol_material_mo
 
 
 def determine_primlist_blend_method(
-    primlist: PrimList, bpyimage: Optional[Image], ignore_vcolalpha: bool = False
+    primlist: PrimList, bpyimage: Optional[Image], import_vcol_alpha: bool = True
 ) -> str:
     """return Blender blend_method to use for this primlist
 
@@ -363,7 +363,7 @@ def determine_primlist_blend_method(
     """
     encountered_zero_alpha = False
 
-    if not ignore_vcolalpha:
+    if import_vcol_alpha:
         # check vertex colors for transparency
         for prim in primlist:
             for r, g, b, alpha in prim.colors:

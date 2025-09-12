@@ -110,6 +110,32 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         default=True,
     )
 
+    vcol_alpha: EnumProperty(
+        name="Vertex color alpha",
+        items=[
+            (
+                "AUTO",
+                "Automatic",
+                "Ignore vertex color alpha for just map-pm2 files, "
+                "import it for everything else (ghs and standalone pm2 files)",
+            ),
+            (
+                "IMPORT",
+                "Import",
+                "Always import the vertex color alpha",
+            ),
+            (
+                "IGNORE",
+                "Ignore",
+                "Always ignore the vertex color alpha",
+            ),
+        ],
+        description="Whether to import or ignore vertex color alpha. "
+        "Automatic is recommended, but the Final Chase map-pm2 needs Import, "
+        "while decoration pm2s need Ignore",
+        default="AUTO",
+    )
+
     def draw(self, context):
         layout = self.layout
 
@@ -118,6 +144,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
 
         layout.prop(self, "ghs_anim_method")
         layout.prop(self, "vcol_materials")
+        layout.prop(self, "vcol_alpha")
 
     def execute(self, context):
         # to reduce Blender startup time, delay import until now

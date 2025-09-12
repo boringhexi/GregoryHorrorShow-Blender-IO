@@ -91,6 +91,7 @@ class GhsImporter:
         bl_name="",
         anim_method="1LONG",
         vcol_materials=True,
+        import_vcol_alpha=True,
     ):
         """
 
@@ -103,6 +104,7 @@ class GhsImporter:
         keys), or "TPOSE" (attempts to create a T-pose from the first animation)
         :param bl_name:
         :param vcol_materials: if True, setup vertex color materials
+        :param import_vcol_alpha: if True, import vertex color alpha
         """
         self.ghspath = Path(ghspath)
         self.pm2dir = Path(pm2dir)
@@ -119,11 +121,10 @@ class GhsImporter:
             raise ValueError(f"Unknown anim_method {anim_method!r}")
         self.anim_method = anim_method
         self._vcol_materials = vcol_materials
+        self._import_vcol_alpha = import_vcol_alpha
         self._matsettings_materials_to_reuse: dict[MatSettings, Material] = dict()
 
     def import_stuff(self):
-        vcol_material_mode = "RGBA" if self._vcol_materials else "NONE"
-
         # load ghs data and MeshPosRots
         with open(self.ghspath, "rt") as ghsfile:
             ghsdata = json.load(ghsfile)
@@ -198,7 +199,8 @@ class GhsImporter:
                 pm2model,
                 bl_name=f"{self.bl_name}_p{pm2idx:02x}",
                 texdir=self.texdir,
-                vcol_material_mode=vcol_material_mode,
+                vcol_materials=self._vcol_materials,
+                import_vcol_alpha=self._import_vcol_alpha,
                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
             )
             pm2importer.import_scene()
@@ -605,7 +607,8 @@ class GhsImporter:
                                 pm2model,
                                 bl_name=pm2name,
                                 texdir=self.texdir,
-                                vcol_material_mode=vcol_material_mode,
+                                vcol_materials=self._vcol_materials,
+                                import_vcol_alpha=self._import_vcol_alpha,
                                 matsettings_materials_to_reuse=self._matsettings_materials_to_reuse,
                             )
                             pm2importer.import_scene()
