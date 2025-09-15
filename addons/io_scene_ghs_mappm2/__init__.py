@@ -5,7 +5,7 @@ from bpy_extras.io_utils import ImportHelper
 bl_info = {
     "name": "Import Gregory Horror Show",
     "author": "boringhexi",
-    "version": (0, 2, 0),
+    "version": (0, 2, 1),
     "blender": (3, 0, 0),
     "location": "File > Import",
     "description": "Import GHS/MAP-PM2/PM2 files from Gregory Horror Show (PS2)",
