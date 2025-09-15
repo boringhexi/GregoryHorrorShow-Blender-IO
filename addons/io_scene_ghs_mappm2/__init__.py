@@ -51,10 +51,10 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
     files: CollectionProperty(type=bpy.types.OperatorFileListElement)
 
     bl_name_override: StringProperty(
-        name="Blender name override",
+        name="Object name override",
         default="",
-        description="Use this value as the name of the imported object(s) instead of"
-        "generating one automatically from the filename",
+        description="Object names will be based on this instead of being generated "
+        "automatically from filenames",
     )
 
     ghs_anim_method: EnumProperty(
@@ -99,7 +99,7 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
     pm2_texdir: StringProperty(
         name="PM2 texture directory",
         description="When importing standalone PM2 files, load textures from this "
-        "directory. Otherwise no textures will be loaded",
+        "directory (absolute path). Otherwise no textures will be loaded",
         default="",
     )
 
@@ -145,6 +145,12 @@ class ImportGHSMAPPM2(bpy.types.Operator, ImportHelper):
         layout.prop(self, "ghs_anim_method")
         layout.prop(self, "vcol_materials")
         layout.prop(self, "vcol_alpha")
+
+        header, body = layout.panel("GHSMAPPM2_import_advanced", default_closed=True)
+        header.label(text="Advanced")
+        if body is not None:
+            body.prop(self, "bl_name_override")
+            body.prop(self, "pm2_texdir")
 
     def execute(self, context):
         # to reduce Blender startup time, delay import until now
